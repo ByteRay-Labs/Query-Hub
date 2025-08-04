@@ -1,0 +1,54 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Suspicious PowerShell Execution
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1059.001
+  - T1070.005
+
+# Description of what the query does and its purpose.
+description: This query identifies suspicious PowerShell execution patterns, including encoded commands and unusual parent processes, which could indicate malicious activity.
+
+# The author or team that created the query.
+author: Your Security Team
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+  - ProcessRollup2
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - PowerShell
+  - Execution
+  - Endpoint
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2 ImageFileName=/\\powershell\\.exe/i
+  | CommandLine=/\s-[eE^]{1,2}[nN][cC][oO][dD][eE][mM][aA][nN][dD^]+\s/i
+  | join({#event_simpleName=UserIdentity}, field=AuthenticationID, include=[UserName])
+  | table([aid, UserName, ParentImageFileName, ImageFileName, CommandLine])
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  This query uses CrowdStrike Query Language (CQL) to detect suspicious PowerShell activity:
+
+  1. **Event Filtering**: `#event_simpleName=ProcessRollup2 ImageFileName=/\\powershell\\.exe/i`
+     - Searches ProcessRollup2 events for any PowerShell executable (case-insensitive)
+
+  2. **Command Line Analysis**: `CommandLine=/\s-[eE^]{1,2}[nN][cC][oO][dD][eE][mM][aA][nN][dD^]+\s/i`
+     - Uses regex to find encoded command parameters (-EncodedCommand, -enc, etc.)
+
+  3. **User Context**: `join({#event_simpleName=UserIdentity}, field=AuthenticationID, include=[UserName])`
+     - Enriches results with username information
+
+  4. **Output**: `table([aid, UserName, ParentImageFileName, ImageFileName, CommandLine])`
+     - Displays key fields for analysis

@@ -1,0 +1,66 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Lateral Movement Detection
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1021.001
+  - T1021.002
+  - T1135
+
+# Description of what the query does and its purpose.
+description: This query identifies potential lateral movement activities by detecting remote connections and credential usage patterns across multiple hosts.
+
+# The author or team that created the query.
+author: Your Security Team
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+  - NetworkConnect
+  - ProcessRollup2
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Lateral Movement
+  - Network
+  - RDP
+  - SMB
+  - Endpoint
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=NetworkConnect 
+  | (RemotePort=445 OR RemotePort=3389 OR RemotePort=5985)
+  | !cidr(RemoteAddressIP4, subnet=["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"])
+  | join({#event_simpleName=ProcessRollup2}, field=[aid, RawProcessId], include=[ImageFileName, CommandLine])
+  | join({#event_simpleName=UserIdentity}, field=AuthenticationID, include=[UserName])
+  | table([aid, UserName, ImageFileName, RemoteAddressIP4, RemotePort, CommandLine])
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  This query uses CrowdStrike Query Language (CQL) to detect lateral movement activities:
+
+  1. **Network Connections**: `#event_simpleName=NetworkConnect`
+     - Monitors outbound network connections from endpoints
+
+  2. **Target Ports**: `(RemotePort=445 OR RemotePort=3389 OR RemotePort=5985)`
+     - Focuses on SMB (445), RDP (3389), and WinRM (5985) connections
+
+  3. **External Targets**: `!cidr(RemoteAddressIP4, subnet=["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"])`
+     - Excludes internal network ranges to focus on external connections
+
+  4. **Process Context**: `join({#event_simpleName=ProcessRollup2}, field=[aid, RawProcessId], include=[ImageFileName, CommandLine])`
+     - Adds process information for the connecting application
+
+  5. **User Context**: `join({#event_simpleName=UserIdentity}, field=AuthenticationID, include=[UserName])`
+     - Enriches with user account information
+
+  6. **Output**: `table([aid, UserName, ImageFileName, RemoteAddressIP4, RemotePort, CommandLine])`
+     - Shows user, process, target IP, and connection details

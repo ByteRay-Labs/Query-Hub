@@ -1,0 +1,117 @@
+name: Notify Backend on Query Changes
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'queries/**'  # Only trigger when files in queries folder change
+
+jobs:
+  notify-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2  # Fetch current and previous commit to compare
+      
+    - name: Get query file changes
+      id: query-changes
+      run: |
+        # Get changed files in queries folder only (remove queries/ prefix)
+        CHANGED_QUERY_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^queries/' | sed 's|^queries/||' | jq -R -s -c 'split("\n")[:-1]')
+        echo "changed_query_files=$CHANGED_QUERY_FILES" >> $GITHUB_OUTPUT
+        
+        # Count changes in queries folder
+        QUERY_FILES_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^queries/' | wc -l)
+        echo "query_files_changed=$QUERY_FILES_CHANGED" >> $GITHUB_OUTPUT
+        
+        # Get all current .yml files in queries folder with their content
+        echo "Getting all query files..."
+        QUERY_FILES_JSON="[]"
+        
+        if [ -d "queries" ]; then
+          # Create temporary file for building JSON array
+          temp_file=$(mktemp)
+          echo "[]" > "$temp_file"
+          
+          for file in queries/*.yml queries/*.yaml; do
+            if [ -f "$file" ]; then
+              # Remove 'queries/' prefix from filename
+              filename=$(basename "$file")
+              echo "Processing: $file -> $filename"
+              
+              # Read file content and escape it properly for JSON
+              content=$(cat "$file" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+              
+              # Create JSON object and add to array
+              jq --arg filename "$filename" --arg content "$content" \
+                '. += [{"filename": $filename, "content": $content}]' "$temp_file" > "${temp_file}.tmp" && mv "${temp_file}.tmp" "$temp_file"
+            fi
+          done
+          
+          QUERY_FILES_JSON=$(cat "$temp_file")
+          rm -f "$temp_file"
+        fi
+        
+        # Save to file and output
+        echo "$QUERY_FILES_JSON" > query_files.json
+        echo "All query files collected: $(echo "$QUERY_FILES_JSON" | jq 'length') files"
+        
+    - name: Notify Backend Server
+      if: steps.query-changes.outputs.query_files_changed > 0
+      env:
+        BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+        REPO_NAME: ${{ github.repository }}
+        COMMIT_SHA: ${{ github.sha }}
+        REF: ${{ github.ref }}
+        CHANGED_QUERY_FILES: ${{ steps.query-changes.outputs.changed_query_files }}
+        QUERY_FILES_CHANGED: ${{ steps.query-changes.outputs.query_files_changed }}
+      run: |
+        # Read all query files content
+        QUERY_FILES_CONTENT=$(cat query_files.json)
+        
+        # Create payload with query files information
+        PAYLOAD=$(jq -n \
+          --arg repository "$REPO_NAME" \
+          --arg event_type "query_changes" \
+          --arg commit_sha "$COMMIT_SHA" \
+          --arg ref "$REF" \
+          --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          --arg sender "${{ github.actor }}" \
+          --arg commit_message "${{ github.event.head_commit.message }}" \
+          --argjson changed_files "$CHANGED_QUERY_FILES" \
+          --arg files_changed_count "$QUERY_FILES_CHANGED" \
+          --arg commit_url "${{ github.event.head_commit.url }}" \
+          --argjson all_query_files "$QUERY_FILES_CONTENT" \
+          '{
+            repository: $repository,
+            event_type: $event_type,
+            commit_sha: $commit_sha,
+            ref: $ref,
+            timestamp: $timestamp,
+            sender: $sender,
+            commit_message: $commit_message,
+            changed_query_files: $changed_files,
+            query_files_changed_count: ($files_changed_count | tonumber),
+            commit_url: $commit_url,
+            all_query_files: $all_query_files
+          }')
+        
+        # Create HMAC signature for authentication
+        SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -binary | base64)
+        
+        echo "Notifying backend about $QUERY_FILES_CHANGED query file changes..."
+        echo "Total query files included: $(echo "$QUERY_FILES_CONTENT" | jq 'length')"
+        
+        # Send request to backend
+        curl -X POST "$BACKEND_URL/webhook/github" \
+          -H "Content-Type: application/json" \
+          -H "X-GitHub-Repository: $REPO_NAME" \
+          -H "X-GitHub-Event: query_changes" \
+          -H "X-Hub-Signature-256: sha256=$SIGNATURE" \
+          -H "User-Agent: GitHub-Actions-Webhook" \
+          -d "$PAYLOAD" \
+          --fail-with-body
