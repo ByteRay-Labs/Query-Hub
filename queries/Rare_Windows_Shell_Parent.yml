@@ -1,0 +1,61 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Rare windows shell parent process
+
+# MITRE ATT&CK technique IDs
+# mitre_ids:
+
+# Description of what the query does and its purpose.
+description: This hunting query is designed to detect rare shell parent processes.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - ProcessRollup2
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - powershell
+  - pwsh
+  - cmd
+  - commandline
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2 event_platform=Win
+  | case { in(field=FileName, values=["powershell.exe", "cmd.exe", "pwsh.exe"]) | IsChild := "1"; * | IsChild := "0" }
+  | case { IsChild = "1" | ProcId := ParentProcessId | ChildProcess := FileName | ChildCommandLine := CommandLine;
+  IsChild = "0" | ProcId := TargetProcessId | ParentCommandLine := CommandLine | ParentFileName := FileName | ParentFilePath := FilePath | ParentSHA256HashData := SHA256HashData; }
+  | groupBy([ComputerName, ProcId], function=([count(ParentProcessId, distinct=true, as=EventCount), collect([ParentFileName, ParentSHA256HashData, ParentFilePath, ParentCommandLine, ChildProcess]), collect(ChildCommandLine, limit=4)]), limit=max)
+  | EventCount > 1
+  | groupBy([ParentSHA256HashData], function=([collect([aid, ParentFileName, ParentFilePath, ParentCommandLine, ChildProcess, ChildCommandLine]), count(ComputerName, as=HostCount)]))
+  | HostCount < 5
+  | sort([HostCount, ParentFileName], order=asc)
+
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  This hunting query is designed to detect rare shell parent processes:
+
+  1. **Filter for Windows Events**: `#event_simpleName=ProcessRollup2``event_platform=Win`
+
+  2. **Classify Processes**: `(case { in(field=FileName, values=["powershell.exe", "cmd.exe", "pwsh.exe"]) | IsChild := "1";)`
+     - If the FileName matches a shell (powershell.exe, cmd.exe, pwsh.exe), the process is marked as a child process 
+     - Otherwise, it is marked as not a child process
+
+  3. **Assign Process Information**: `ParentImageFileName!=/\\(powershell|cmd)\.exe$/i`
+     - For child processes (`IsChild = "1"`), the `ProcId` is set to the `ParentProcessId`
+     - For non-child processes (`IsChild = "0"`), the `ProcId` is set to the `TargetProcessId`
+
+  4. **Group by Computer and Process**: 
+     - The query groups events by `ComputerName` and `ProcId` to analyze process relationships.
+     - Calculation of the distinct count of `ParentProcessId` as `EventCount`
+ 
