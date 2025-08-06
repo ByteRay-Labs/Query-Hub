@@ -1,0 +1,42 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Powershell Downloads
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1059
+
+# Description of what the query does and its purpose.
+description: This query detects powershell downloads using `Start-BitsTransfer`, `Invoke-WebRequest`, or `System.Net.WebClient`.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - CrowdStrike EDR 
+  
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Powershell
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+#event_simpleName=CommandHistory
+| CommandHistory=/Invoke\-WebRequest|Net\.WebClient|Start\-BitsTransfer/i
+| regex("(?<URL>https?://[^'\"]+)", field=CommandHistory)
+| replace("https://", with="", field=URL, as=ShortURL)
+| replace("\/.*", with="", field=ShortURL, as=otx_lookup)
+| UrlBase:="https://otx.alienvault.com/indicator/domain/"
+| format(format="[Alienvault](%s%s)", field=[UrlBase, otx_lookup], as=DomainLookup)
+| table([DomainLookup, URL, ComputerName, UserName, CommandHistory], limit=20000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+#explanation: |
