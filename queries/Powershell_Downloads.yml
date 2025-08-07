@@ -27,14 +27,14 @@ tags:
 # The actual CrowdStrike Query Language (CQL) code.
 # Using the YAML block scalar `|` allows for multi-line strings.
 cql: |
-#event_simpleName=CommandHistory
-| CommandHistory=/Invoke\-WebRequest|Net\.WebClient|Start\-BitsTransfer/i
-| regex("(?<URL>https?://[^'\"]+)", field=CommandHistory)
-| replace("https://", with="", field=URL, as=ShortURL)
-| replace("\/.*", with="", field=ShortURL, as=otx_lookup)
-| UrlBase:="https://otx.alienvault.com/indicator/domain/"
-| format(format="[Alienvault](%s%s)", field=[UrlBase, otx_lookup], as=DomainLookup)
-| table([DomainLookup, URL, ComputerName, UserName, CommandHistory], limit=20000)
+  #event_simpleName=CommandHistory
+  | CommandHistory=/Invoke\-WebRequest|Net\.WebClient|Start\-BitsTransfer/i
+  | regex("(?<URL>https?://[^'\"]+)", field=CommandHistory)
+  | replace("https://", with="", field=URL, as=ShortURL)
+  | replace("\/.*", with="", field=ShortURL, as=otx_lookup)
+  | UrlBase:="https://otx.alienvault.com/indicator/domain/"
+  | format(format="[Alienvault](%s%s)", field=[UrlBase, otx_lookup], as=DomainLookup)
+  | table([DomainLookup, URL, ComputerName, UserName, CommandHistory], limit=20000)
 
 # Explanation of the query.
 # Using the YAML block scalar `|` allows for multi-line strings.
