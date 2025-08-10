@@ -1,0 +1,64 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Honeytoken Account Logon Activity
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1078
+
+# Description of what the query does and its purpose.
+description: This query detects logon activity associated with a honeytoken account. Honeytokens are decoy accounts designed to lure attackers, and any activity on them is a strong indicator of compromise.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Falcon Identity Protection
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - honeytoken
+  - deception
+  - identity
+  - logon
+  - credential access
+  - T1078
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Detects logins involving default administrator accounts
+  #event_simpleName=/UserLogon.*/i
+  // Adjust or extend this to match your custom honeytoken accounts
+  | UserSid = /S-1-5-21-\d*-\d*-\d*-500/i
+
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  ### Honeytoken Account Access Detection
+
+  This use case is designed to generate an alert when any activity involving a designated **honeytoken account** is observed. Honeytokens serve as decoys; they are accounts that appear valuable to an attacker but have no legitimate purpose and are heavily monitored. Any interaction with them is highly indicative of malicious activity.
+
+  **Key Objectives:**
+  - **Lure Attackers**: Create accounts that mimic administrator or service accounts to attract adversarial engagement.
+  - **High-Fidelity Alerts**: Since these accounts have no legitimate use, any logon event is a high-confidence signal of a breach.
+  - **Monitor and Safeguard**: Apply Identity Protection policies to monitor these accounts without granting them any actual permissions, making them safe and effective traps.
+
+  ---
+  #### Query Breakdown:
+
+  1. **`#event_simpleName=/UserLogon.*/i`**
+     - This line filters for all logon-related events captured by CrowdStrike Falcon. It serves as the primary data source for the detection.
+
+  2. **`| UserSid = /S-1-5-21-\d*-\d*-\d*-500/i`**
+     - This filters the logon events for a specific Security Identifier (SID). The SID `S-1-5-21-...-500` is the well-known SID for the default local administrator account on a Windows domain.
+     - **Crucially**, this value must be replaced with the actual SID(s) of your organization's designated honeytoken accounts.
+
+  For more details on creating and managing honeytokens within Falcon Identity Protection, please refer to the official CrowdStrike documentation:
+  - [Honeytokens within Falcon Identity Protection](https://supportportal.crowdstrike.com/s/article/ka16T000001MfykQAC)
