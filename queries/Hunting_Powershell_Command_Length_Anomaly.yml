@@ -1,0 +1,108 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Powershell Command Length Anomaly Detection
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1059.001
+  - T1027.010
+
+# Description of what the query does and its purpose.
+description: This query establishes a 7-day baseline of average PowerShell command lengths for each host. It then compares this baseline to the average command length of the last 24 hours. The query identifies hosts with a significant percentage increase in command length, which can be an indicator for obfuscation, fileless execution, or other malicious activities associated with "Living off the Land" techniques.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - ProcessRollup2
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - powershell
+  - pwsh
+  - anomaly
+  - baselining
+  - commandline
+  - T1059.001
+  - T1027.010
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2
+  | ImageFileName=/\\(powershell(_ise)?|pwsh)\.exe/i
+  | CommandLength := length("CommandLine") | CommandLength>0
+  | aid=?AID
+  // Classify Data into Historical and LastDay
+  | case {
+      test(@timestamp < (end() - duration(7d))) | DataSet:="Historical";
+      test(@timestamp > (end() - duration(1d))) | DataSet:="LastDay";
+      *
+  }
+  // Calculate Average Command Length
+  | groupBy([DataSet, aid], function=avg(CommandLength))
+  | case {
+      DataSet="Historical" | rename(field="_avg", as="historicalAvg");
+      DataSet="LastDay" | rename(field="_avg", as="todaysAvg");
+      *
+  }
+  // Aggregate Averages
+  | groupBy([aid], function=[avg("historicalAvg", as=historicalAvg), avg("todaysAvg", as=todaysAvg)])
+  // Calculate Percentage Increase
+  | PercentIncrease := (todaysAvg - historicalAvg) / historicalAvg * 100
+  | format("%d", field=PercentIncrease, as=PercentIncrease)
+  | format(format="%.2f", field=[historicalAvg], as=historicalAvg)
+  // Filter and Sort Results
+  | PercentIncrease > 0
+  | sort(PercentIncrease, limit=10000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  ## Why Powershell is a Target for Attackers
+
+  Powershell is an integral part of modern Windows systems and offers powerful automation capabilities through its .NET integration. These features also make it attractive to attackers:
+
+  - **Pre-installed:** Available on every Windows system (no additional code needed).
+  - **Powerful Access:** Direct access to Windows APIs and network resources.
+  - **In-Memory Execution:** Capable of running code directly from memory (fileless execution).
+  - **Often Under-Monitored:** Frequently lacks sufficient monitoring or restrictions.
+
+  Attackers use **"Living off the Land"** tactics to leverage PowerShell for stealthy attacks without deploying additional tools.
+
+  ## Why Command Length Deviations Indicate Threats
+
+  Attackers often employ methods that result in unusually long command lines. Monitoring deviations from normal command length is a valuable approach for detecting suspicious activity. Unusually long commands can indicate:
+
+  * **Obfuscation:**
+        * **Encoding:** Using Base64 (`-EncodedCommand`), hexadecimal, or ASCII to hide commands.
+        * **Escape Characters:** Using backticks (`) to impair readability.
+        * **Embedding Payloads:** Inserting entire scripts or binary payloads directly into the command line.
+  * **Fileless Execution & LotL:** Complex one-liners are used to download and execute payloads from remote sources, leading to longer commands.
+  * **Offensive Frameworks:** Tools like Empire, PowerSploit, or Cobalt Strike often generate long, obfuscated commands for their payloads.
+
+  Unusually long commands are a strong indicator because they directly correlate with common attacker techniques for evasion and execution (e.g., [T1027.010 Obfuscated Files or Information](https://attack.mitre.org/techniques/T1027/010/)). Legitimate administrative tasks rarely require the extreme lengths produced by these methods.
+
+  | Technique | Impact on Length | Description |
+  | :--- | :--- | :--- |
+  | Base64 (`-EncodedCommand`)| Significant Increase | Hides script content; very common for payload delivery. |
+  | String Concatenation | Moderate/Variable Increase | Used to break up keywords and evade simple string matching. |
+  | Remote Download Cradles | Variable (Often Long) | Commands like `IEX (New-Object Net.WebClient).DownloadString(...)` can be long. |
+  | Embedded Scripts/Payloads | Significant Increase | Entire scripts or binaries are passed in the command line, nearing max length. |
+
+  ## The Power of Baselining: Establishing "Normal"
+
+  This query is based on the core idea of baselining "normal" activity for PowerShell command lengths and then identifying significant deviations from that norm.
+
+  ### Creating the Baseline
+
+  The query analyzes historical PowerShell executions over a defined period (7 days) to calculate statistical measures (the average) for command lengths. This establishes the expected range. By comparing the last day's average length against this historical baseline, the query can flag anomalous increases.
+
+  A **7-day baseline** is chosen to:
+  -   Capture weekly operational cycles (e.g., weekend maintenance scripts).
+  -   Balance stability and adaptability, smoothing out daily fluctuations while remaining responsive to real changes.
