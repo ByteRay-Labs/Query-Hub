@@ -34,7 +34,7 @@ cql: |
 # Explanation of the query.
 # Using the YAML block scalar `|` allows for multi-line strings.
 # Uses markdown for formatting on the webpage.
-#explanation: |
+explanation: |
   Msiexec.exe – A Windows Installer utility that executes MSI packages or DLLs (including remote or transformed payloads), frequently misused by attackers for stealthy code execution and application control bypass.
-       
+  
   [LOLBAS - Msiexec.exe](https://lolbas-project.github.io/lolbas/Binaries/Msiexec/)
