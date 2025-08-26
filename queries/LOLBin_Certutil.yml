@@ -4,7 +4,10 @@ name: LOLBin Certutil
 
 # MITRE ATT&CK technique IDs
 mitre_ids:
-  -
+  - T1105
+  - T1564.004
+  - T1027.013
+  - T1140
 
 # Description of what the query does and its purpose.
 description: |
