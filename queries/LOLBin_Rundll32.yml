@@ -36,7 +36,7 @@ cql: |
 # Explanation of the query.
 # Using the YAML block scalar `|` allows for multi-line strings.
 # Uses markdown for formatting on the webpage.
-#explanation: |
+explanation: |
   Rundll32.exe – A native Windows binary that can be abused to execute DLLs, scripts, and other payloads, making it a common technique in Living-off-the-Land attacks.
   
   [LOLBAS - Rundll32.exe](https://lolbas-project.github.io/lolbas/Binaries/Rundll32/)
