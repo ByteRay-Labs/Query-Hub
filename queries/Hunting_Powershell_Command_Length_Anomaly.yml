@@ -15,17 +15,17 @@ author: ByteRay GmbH
 
 # The required log sources to run this query successfully in Next-Gen SIEM.
 # This will be displayed in the UI to inform the user.
+# The required log sources to run this query successfully in Next-Gen SIEM.
 log_sources:
-  - ProcessRollup2
+  - Endpoint
 
 # Tags for filtering and categorization.
-# Include relevant techniques, tactics, or platforms.
 tags:
-  - powershell
-  - pwsh
-  - anomaly
-  - baselining
-  - commandline
+  - Detection
+
+cs_required_modules: 
+  - Insight
+  
 
 # --- Query Content ---
 # The actual CrowdStrike Query Language (CQL) code.
