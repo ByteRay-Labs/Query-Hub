@@ -17,18 +17,15 @@ author: ByteRay GmbH
 # The required log sources to run this query successfully in Next-Gen SIEM.
 # This will be displayed in the UI to inform the user.
 log_sources:
-  - Endpoint
-  - NetworkConnect
-  - ProcessRollup2
+  - Network
 
 # Tags for filtering and categorization.
 # Include relevant techniques, tactics, or platforms.
 tags:
-  - Lateral Movement
-  - Network
-  - RDP
-  - SMB
-  - Endpoint
+  - Detection
+
+cs_required_modules: 
+  - Insight
 
 # --- Query Content ---
 # The actual CrowdStrike Query Language (CQL) code.
