@@ -17,14 +17,13 @@ author: ByteRay GmbH
 # This will be displayed in the UI to inform the user.
 log_sources:
   - Endpoint
-  - ProcessRollup2
 
 # Tags for filtering and categorization.
-# Include relevant techniques, tactics, or platforms.
 tags:
-  - PowerShell
-  - Execution
-  - Endpoint
+  - Hunting
+
+cs_required_modules: 
+  - Insight
 
 # --- Query Content ---
 # The actual CrowdStrike Query Language (CQL) code.
