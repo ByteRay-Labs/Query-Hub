@@ -26,8 +26,6 @@ tags:
   - anomaly
   - baselining
   - commandline
-  - T1059.001
-  - T1027.010
 
 # --- Query Content ---
 # The actual CrowdStrike Query Language (CQL) code.
