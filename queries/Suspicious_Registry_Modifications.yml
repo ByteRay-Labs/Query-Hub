@@ -17,15 +17,14 @@ author: ByteRay GmbH
 # This will be displayed in the UI to inform the user.
 log_sources:
   - Endpoint
-  - RegGenericValue
 
 # Tags for filtering and categorization.
-# Include relevant techniques, tactics, or platforms.
 tags:
-  - Registry
-  - Persistence
-  - Defense Evasion
-  - Endpoint
+  - Hunting
+
+cs_required_modules: 
+  - Insight
+  - Identity
 
 # --- Query Content ---
 # The actual CrowdStrike Query Language (CQL) code.
