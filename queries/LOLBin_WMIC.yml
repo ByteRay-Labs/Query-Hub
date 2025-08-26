@@ -36,7 +36,7 @@ cql: |
 # Explanation of the query.
 # Using the YAML block scalar `|` allows for multi-line strings.
 # Uses markdown for formatting on the webpage.
-#explanation: |
+explanation: |
   Wmic.exe – A built-in Windows tool for scripting and remote system management, which adversaries exploit to run commands, load executables via alternate data streams, execute remote or XSL-formatted payloads, and move files stealthily.
   
   [LOLBAS - Wmic.exe](https://lolbas-project.github.io/lolbas/Binaries/Wmic/)
