@@ -13,15 +13,15 @@ description: This query detects powershell downloads using `Start-BitsTransfer`,
 author: ByteRay GmbH
 
 # The required log sources to run this query successfully in Next-Gen SIEM.
-# This will be displayed in the UI to inform the user.
 log_sources:
-  - CrowdStrike EDR 
-  
+  - Endpoint
+
 # Tags for filtering and categorization.
-# Include relevant techniques, tactics, or platforms.
 tags:
-  - Powershell
   - Hunting
+
+cs_required_modules: 
+  - Insight
 
 # --- Query Content ---
 # The actual CrowdStrike Query Language (CQL) code.
