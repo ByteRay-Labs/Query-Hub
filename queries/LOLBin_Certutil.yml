@@ -37,7 +37,7 @@ cql: |
 # Explanation of the query.
 # Using the YAML block scalar `|` allows for multi-line strings.
 # Uses markdown for formatting on the webpage.
-#explanation: |
+explanation: |
   Certutil.exe – A Windows certificate-management tool that attackers often misuse to download executables or script files (even into alternate data streams), as well as encode or decode payloads, aiding stealthy file delivery and evasion techniques.
   
   [LOLBAS - Certutil.exe](https://lolbas-project.github.io/lolbas/Binaries/Certutil/)
