@@ -1,0 +1,42 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: LOLBin Rundll32
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1218.011
+  - T1564.004
+
+# Description of what the query does and its purpose.
+description: |
+  This query detects the use of Rundll32 from parents that are known for misuse.
+
+# The author or team that created the query. 
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - CrowdStrike EDR
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - LOLBin
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  in(#event_simpleName, values=["ProcessRollup2","ProcessBlocked"])
+  | event_platform=Win and ImageFileName=/rundll32.exe/i
+  | in(ParentBaseFileName, values=["cmd.exe","winword.exe","powerpnt.exe","excel.exe","outlook.exe","mshta.exe","cscript.exe","wscript.exe"])
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+#explanation: |
+  Rundll32.exe – A native Windows binary that can be abused to execute DLLs, scripts, and other payloads, making it a common technique in Living-off-the-Land attacks.
+  
+  [LOLBAS - Rundll32.exe](https://lolbas-project.github.io/lolbas/Binaries/Rundll32/)

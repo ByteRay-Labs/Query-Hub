@@ -1,0 +1,43 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: LOLBin Certutil
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1105
+  - T1564.004
+  - T1027.013
+  - T1140
+
+# Description of what the query does and its purpose.
+description: |
+  This query detects the use of certutil.exe.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - CrowdStrike EDR
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - LOLBin
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  in(#event_simpleName, values=["ProcessRollup2","ProcessBlocked"])
+  | event_platform=Win and ImageFileName=/certutil.exe/i and CommandLine=/(https?:)/i
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+#explanation: |
+  Certutil.exe – A Windows certificate-management tool that attackers often misuse to download executables or script files (even into alternate data streams), as well as encode or decode payloads, aiding stealthy file delivery and evasion techniques.
+  
+  [LOLBAS - Certutil.exe](https://lolbas-project.github.io/lolbas/Binaries/Certutil/)

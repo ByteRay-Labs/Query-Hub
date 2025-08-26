@@ -1,0 +1,41 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: LOLBin Regsvr32
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1218.010
+
+# Description of what the query does and its purpose.
+description: |
+  This query detects the use of Regsvr32 when it has loaded scrobj.dll.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - CrowdStrike EDR
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - LOLBin
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  in(#event_simpleName, values=["ProcessRollup2","ProcessBlocked"])
+  | event_platform=Win
+  | ImageFileName=/regsvr32.exe/i CommandLine=/scrobj.dll/i CommandLine=/i:/i
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+#explanation: |
+  Regsvr32.exe – A native Windows tool designed to register DLLs, but frequently misused by attackers to execute remote or local scriptlets (SCT files)—often enabling Application Whitelisting bypass and stealthy code execution.
+  
+  [LOLBAS - Regsvr32.exe](https://lolbas-project.github.io/lolbas/Binaries/Regsvr32/)
