@@ -25,7 +25,6 @@ tags:
   - identity
   - logon
   - credential access
-  - T1078
 
 # --- Query Content ---
 # The actual CrowdStrike Query Language (CQL) code.
