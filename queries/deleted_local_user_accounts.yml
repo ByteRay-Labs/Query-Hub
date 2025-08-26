@@ -1,0 +1,33 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Deleted Local User Accounts
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1098
+
+# Description of what the query does and its purpose.
+description: "Table of all deleted local user accounts including UserName, ComputerName, aid, aip, and LocalIP."
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - CrowdStrike EDR
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - User Accounts
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=UserAccountDeleted
+  | groupBy([UserName, aid, aip, ComputerName, event_platform, LocalIP, name], function=selectLast([@timestamp]))
+  | table([@timestamp, UserName, ComputerName, aid, aip, event_platform, LocalIP, name])
+  | sort(@timestamp)
+
