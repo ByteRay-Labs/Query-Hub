@@ -1,0 +1,42 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: LOLBin WMIC
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1218
+  - T1105
+  - T1564.004
+
+# Description of what the query does and its purpose.
+description: |
+  This query detects the use if WMIC.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - CrowdStrike EDR
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - LOLBin
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  in(#event_simpleName, values=["ProcessRollup2","ProcessBlocked"])
+  | event_platform=Win and ImageFileName=/wmic.exe/i
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+#explanation: |
+  Wmic.exe – A built-in Windows tool for scripting and remote system management, which adversaries exploit to run commands, load executables via alternate data streams, execute remote or XSL-formatted payloads, and move files stealthily.
+  
+  [LOLBAS - Wmic.exe](https://lolbas-project.github.io/lolbas/Binaries/Wmic/)
