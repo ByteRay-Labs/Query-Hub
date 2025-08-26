@@ -41,4 +41,4 @@ cql: |
 #explanation: |
   Mshta.exe – A Windows utility for executing HTML Applications (`.hta`) — often abused to run embedded or remote VBScript, JScript, or download-and-execute payloads via alternate data streams or web URLs.
   
-  [LOLBAS - Msiexec.exe](https://lolbas-project.github.io/lolbas/Binaries/Msiexec/)
+  [LOLBAS - Mshta.exe](https://lolbas-project.github.io/lolbas/Binaries/Mshta/)
