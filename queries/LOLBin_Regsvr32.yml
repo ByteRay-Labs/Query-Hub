@@ -35,7 +35,7 @@ cql: |
 # Explanation of the query.
 # Using the YAML block scalar `|` allows for multi-line strings.
 # Uses markdown for formatting on the webpage.
-#explanation: |
+explanation: |
   Regsvr32.exe – A native Windows tool designed to register DLLs, but frequently misused by attackers to execute remote or local scriptlets (SCT files)—often enabling Application Whitelisting bypass and stealthy code execution.
   
   [LOLBAS - Regsvr32.exe](https://lolbas-project.github.io/lolbas/Binaries/Regsvr32/)
