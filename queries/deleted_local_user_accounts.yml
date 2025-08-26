@@ -22,6 +22,9 @@ log_sources:
 tags:
   - User Accounts
 
+cs_required_modules: 
+  - Insight
+
 # --- Query Content ---
 # The actual CrowdStrike Query Language (CQL) code.
 # Using the YAML block scalar `|` allows for multi-line strings.
