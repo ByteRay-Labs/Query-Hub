@@ -20,7 +20,7 @@ log_sources:
 # Tags for filtering and categorization.
 # Include relevant techniques, tactics, or platforms.
 tags:
-  - User Accounts
+  - Monitoring
 
 cs_required_modules: 
   - Insight
