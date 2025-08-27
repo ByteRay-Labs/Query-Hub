@@ -16,7 +16,7 @@ author: ByteRay GmbH
 # The required log sources to run this query successfully in Next-Gen SIEM.
 # This will be displayed in the UI to inform the user.
 log_sources:
-  - ActiveDirectoryAudit
+  - Identity
 
 # Tags for filtering and categorization.
 # Include relevant techniques, tactics, or platforms.
