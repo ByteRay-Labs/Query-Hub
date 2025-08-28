@@ -7,7 +7,7 @@ mitre_ids:
   - T1052
 
 # Description of what the query does and its purpose.
-description: This query flags unusual activity involving external storage devices, such as large file copy operations, bulk transfers of sensitive directories, or sudden usage of USB media on systems where it’s rarely seen. While USB devices are common for legitimate use, adversaries may exploit them to exfiltrate confidential data outside normal monitoring channels. Such activity is especially concerning in restricted environments, as it bypasses network-based detection controls and can indicate insider threat or physical compromise.
+description: This query shows unusual activity involving external storage devices, such as large file copy operations, bulk transfers to physical external media. While USB devices are common for legitimate use, adversaries may exploit them to exfiltrate confidential data outside normal monitoring channels. Such activity is especially concerning in restricted environments, as it bypasses network-based detection controls and can indicate insider threat or physical compromise.
 
 # The author or team that created the query.
 author: ByteRay GmbH
