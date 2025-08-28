@@ -2,7 +2,8 @@
 # Human-readable name for the query. Will be displayed as the title.
 name: Phishing - List of links opened from Outlook
 # MITRE ATT&CK technique IDs
-#mitre_ids:
+mitre_ids:
+  - T1566
 
 # Description of what the query does and its purpose.
 #description:
