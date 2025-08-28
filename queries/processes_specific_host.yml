@@ -1,0 +1,37 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Find processes that only ran a few of times on a specific host
+# MITRE ATT&CK technique IDs
+#mitre_ids:
+
+# Description of what the query does and its purpose.
+#description:
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules: 
+  - Insight
+  
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2 OR #event_simpleName=SyntheticProcessRollup2
+  | aid=?aid
+  | groupBy([SHA256HashData, ImageFileName], limit=max)
+  | _count <5
+  | sort(_count, limit=1000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+#  explanation: |
