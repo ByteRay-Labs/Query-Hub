@@ -3,7 +3,8 @@
 name: Find tasks scheduled with ComHandler
 
 # MITRE ATT&CK technique IDs
-mitre_ids: T1053.005
+mitre_ids: 
+  - T1053.005
 
 # Description of what the query does and its purpose.
 #description:

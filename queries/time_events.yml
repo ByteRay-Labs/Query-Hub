@@ -3,7 +3,8 @@
 name: Find events triggered at a specific time
 
 # MITRE ATT&CK technique IDs
-mitre_ids: T1053.005
+mitre_ids: 
+  - T1053.005
 
 # Description of what the query does and its purpose.
 #description:
