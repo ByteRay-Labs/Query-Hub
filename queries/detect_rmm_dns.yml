@@ -1,0 +1,39 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Detect Remote Monitoring and Management (RMM) Tools over DNS
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1219.002
+
+# Description of what the query does and its purpose.
+description: This query identifies the presence or execution of common RMM utilities (e.g., AnyDesk, TeamViewer, ConnectWise, ScreenConnect, Splashtop). While these tools are legitimate and widely used for IT administration, adversaries often abuse them as “living-off-the-land” remote access backdoors. Because they operate under the guise of trusted software and can blend with normal activity, malicious use of RMM tools may bypass traditional security controls, enabling persistence, data exfiltration, or hands-on-keyboard attacks.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Network
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules: 
+  - Insight
+  
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=DnsRequest
+  | DomainName=/anydesk\.com|action1\.com|beamyourscreen\.com|snapview\.de|rustdesk\.com|fleetdeck\.io|tailscale\.com|dwservice\.net|secure\.logmein\.com|teamviewer\.com|screenconnect\.com|fixme\.it|n-able\.com|domotz\.com|datto\.com|level\.io|itarian\.com|pulseway\.com|zoho\.com|manageengine\.com|bomgarcloud\.com|bomgar\.com|zabbix\.com/i
+  | groupBy([DomainName],function=[collect(ContextBaseFileName), count(aid,distinct=true,as=HostCount)])
+  | sort(HostCount,order=asc)
+
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+# explanation: |
