@@ -25,15 +25,10 @@ cs_required_modules:
 # The actual CrowdStrike Query Language (CQL) code.
 # Using the YAML block scalar `|` allows for multi-line strings.
 cql: |
-  #event_simpleName=ProcessRollup2 
+  #event_simpleName=ProcessRollup2
   | CommandLine=/content.outlook/i
-  | aid=?aid 
+  | aid=?aid
   | ImageFileName=/(\/|\\)(?<FileName>\w*\.?\w*)$/
   | FileName=/(winword|excel|powerpnt)\.exe/i
-  | CommandLine=/Outlook\\(?<ShortFile>\w*\\.*)$/i 
+  | CommandLine=/Outlook\\(?<ShortFile>\w*\\.*)$/i
   | table([@timestamp, aid, TargetProcessId, ShortFile, CommandLine], limit=1000)
-
-# Explanation of the query.
-# Using the YAML block scalar `|` allows for multi-line strings.
-# Uses markdown for formatting on the webpage.
-#  explanation: |
