@@ -1,0 +1,43 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Detection of DoH traffic to known DoH-providers
+
+# MITRE ATT&CK technique IDs
+#mitre_ids:
+
+# Description of what the query does and its purpose.
+description: Query: Detect DNS over HTTPS (DoH) Traffic to Known Providers
+This query identifies network traffic to well-known DoH endpoints (e.g., Cloudflare, Google, Quad9, Mozilla). DoH encrypts DNS requests inside HTTPS, which enhances privacy but creates blind spots for defenders. Adversaries can exploit DoH to bypass DNS-based filtering, hide access to phishing domains, establish stealthy command-and-control channels, or exfiltrate data without triggering traditional DNS logs. Monitoring and alerting on DoH connections helps restore visibility into DNS activity—one of the most critical layers of network defense.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Network
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules: 
+  - Insight
+  
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName = DnsRequest
+  | in(field="DomainName", values=["cloudflare-dns.com", "dns.google", "dns.quad9.net","mozilla.cloudflare-dns.com"])
+  | groupBy(["ComputerName","ContextBaseFileName"])
+
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  DNS over HTTPS (DoH) encrypts DNS queries by tunneling them through HTTPS, making them indistinguishable from regular web traffic. While this improves user privacy, it also introduces blind spots for security teams. Why it matters:
+  - Phishing domains can be accessed without triggering DNS-based filtering.
+  - Command-and-Control (C2) communication can blend into normal HTTPS traffic.
+  - Data exfiltration becomes harder to detect as destination domains are hidden.
+  Impact on organizations: Without proper monitoring or controls, DoH can undermine DNS visibility—one of the most   critical layers in network security—allowing threats to go unnoticed.
