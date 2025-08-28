@@ -1,0 +1,43 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Detect Data Exfiltration via external storage devices
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1052
+
+# Description of what the query does and its purpose.
+description: This query flags unusual activity involving external storage devices, such as large file copy operations, bulk transfers of sensitive directories, or sudden usage of USB media on systems where it’s rarely seen. While USB devices are common for legitimate use, adversaries may exploit them to exfiltrate confidential data outside normal monitoring channels. Such activity is especially concerning in restricted environments, as it bypasses network-based detection controls and can indicate insider threat or physical compromise.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules: 
+  - Insight
+  
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=/FileWritten/i and IsOnRemovableDisk = 1
+  | VolumeSessionUUID=*
+  | "Size (MB)" := Size/1024/1024
+  | format(format="%.2f", field=["Size (MB)"], as="Size (MB)")
+  | join(query={#event_simpleName=DcUsbDeviceConnected | rename(DeviceInstanceId, as="DiskParentDeviceInstanceId")}, mode=left, field=[DiskParentDeviceInstanceId], include=[DeviceManufacturer, DeviceProduct])
+  | groupBy([ComputerName, UserName, DeviceManufacturer, DeviceProduct], function=[min(field=@timestamp, as=firstTime),max(field=@timestamp, as=lastTime),sum(Size, as="Size")])
+  | "Size (MB)" := Size/1024/1024
+  | format(format="%.2f", field=["Size (MB)"], as="Size (MB)")
+
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+# explanation: |
