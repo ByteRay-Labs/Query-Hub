@@ -16,7 +16,8 @@ log_sources:
   - Endpoint
 
 # Tags for filtering and categorization.
-tags: Hunting
+tags: 
+  - Hunting
 
 cs_required_modules: 
   - Insight
