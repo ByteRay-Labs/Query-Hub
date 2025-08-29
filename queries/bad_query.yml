@@ -3,7 +3,8 @@
 name: Credential Dumping Detection
 
 # MITRE ATT&CK technique IDs
-mitre_ids: T1003.001
+mitre_ids:
+  - T1003.001
 
 # Description of what the query does and its purpose.
 description: This query detects potential credential dumping activities by monitoring process access to LSASS and suspicious memory operations.
