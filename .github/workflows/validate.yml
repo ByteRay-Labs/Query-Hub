@@ -25,6 +25,9 @@ jobs:
         valid_tags = ['Hunting', 'Monitoring', 'Detection']
         valid_modules = ['Insight', 'Identity', 'Spotlight', 'CSPM / ASPM / DSPM', 'Data Protection', 'IT Automation']
         
+        success_count = 0
+        failure_count = 0
+        
         def check_type(file_path, field_name, value, expected_type, allow_none=False):
             if allow_none and value is None:
                 return True
@@ -57,64 +60,81 @@ jobs:
             return True
         
         for yml_file in Path('queries').glob('*.yml'):
+            file_valid = True
             try:
                 with open(yml_file) as f:
                     data = yaml.safe_load(f)
                 
                 if not isinstance(data, dict):
                     print(f'❌ {yml_file}: Root must be a dictionary/object')
-                    sys.exit(1)
+                    file_valid = False
                 
                 # Check required fields
-                for field in required_fields:
-                    if field not in data:
-                        print(f'❌ {yml_file}: Missing required field: {field}')
-                        sys.exit(1)
-                    
-                    if field == 'name':
-                        if not check_string_field(yml_file, field, data[field]):
-                            sys.exit(1)
-                    elif field == 'cql':
-                        if not check_string_field(yml_file, field, data[field]):
-                            sys.exit(1)
+                if file_valid:
+                    for field in required_fields:
+                        if field not in data:
+                            print(f'❌ {yml_file}: Missing required field: {field}')
+                            file_valid = False
+                        elif field == 'name':
+                            if not check_string_field(yml_file, field, data[field]):
+                                file_valid = False
+                        elif field == 'cql':
+                            if not check_string_field(yml_file, field, data[field]):
+                                file_valid = False
                 
                 # Check optional string fields
-                string_fields = ['description', 'author']
-                for field in string_fields:
-                    if field in data and data[field] is not None:
-                        if not check_string_field(yml_file, field, data[field], allow_empty=True):
-                            sys.exit(1)
+                if file_valid:
+                    string_fields = ['description', 'author']
+                    for field in string_fields:
+                        if field in data and data[field] is not None:
+                            if not check_string_field(yml_file, field, data[field], allow_empty=True):
+                                file_valid = False
                 
                 # Check optional list fields with validation
-                if 'log_sources' in data and data['log_sources'] is not None:
+                if file_valid and 'log_sources' in data and data['log_sources'] is not None:
                     if not check_list_field(yml_file, 'log_sources', data['log_sources'], valid_log_sources, allow_empty=False):
-                        sys.exit(1)
+                        file_valid = False
                 
-                if 'tags' in data and data['tags'] is not None:
+                if file_valid and 'tags' in data and data['tags'] is not None:
                     if not check_list_field(yml_file, 'tags', data['tags'], valid_tags, allow_empty=False):
-                        sys.exit(1)
+                        file_valid = False
                 
-                if 'cs_required_modules' in data and data['cs_required_modules'] is not None:
+                if file_valid and 'cs_required_modules' in data and data['cs_required_modules'] is not None:
                     if not check_list_field(yml_file, 'cs_required_modules', data['cs_required_modules'], valid_modules, allow_empty=False):
-                        sys.exit(1)
+                        file_valid = False
                 
                 # Check MITRE IDs with special validation
-                if 'mitre_ids' in data and data['mitre_ids'] is not None:
+                if file_valid and 'mitre_ids' in data and data['mitre_ids'] is not None:
                     if not check_list_field(yml_file, 'mitre_ids', data['mitre_ids'], allow_empty=False):
-                        sys.exit(1)
-                    for mitre_id in data['mitre_ids']:
-                        if not mitre_id.startswith('T'):
-                            print(f'❌ {yml_file}: Invalid MITRE ID format: \"{mitre_id}\". Must start with \"T\"')
-                            sys.exit(1)
+                        file_valid = False
+                    else:
+                        for mitre_id in data['mitre_ids']:
+                            if not mitre_id.startswith('T'):
+                                print(f'❌ {yml_file}: Invalid MITRE ID format: \"{mitre_id}\". Must start with \"T\"')
+                                file_valid = False
                 
-                print(f'✅ {yml_file}: Valid structure and types')
+                if file_valid:
+                    success_count += 1
+                else:
+                    failure_count += 1
                 
             except yaml.YAMLError as e:
                 print(f'❌ {yml_file}: YAML parsing error: {e}')
-                sys.exit(1)
+                failure_count += 1
             except Exception as e:
                 print(f'❌ {yml_file}: Validation error: {e}')
-                sys.exit(1)
+                failure_count += 1
         
-        print('All YAML files have valid structure and types!')
+        # Print summary
+        total_files = success_count + failure_count
+        print(f'\\n📊 Validation Summary:')
+        print(f'   Total files processed: {total_files}')
+        print(f'   ✅ Successful validations: {success_count}')
+        print(f'   ❌ Failed validations: {failure_count}')
+        
+        if failure_count > 0:
+            print(f'\\n❌ Validation failed! {failure_count} file(s) have validation errors.')
+            sys.exit(1)
+        else:
+            print(f'\\n✅ All YAML files have valid structure and types!')
         "
