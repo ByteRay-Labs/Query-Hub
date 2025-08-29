@@ -1,13 +1,20 @@
 name: Notify Backend on Query Changes
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths:
-      - 'queries/**'  # Only trigger when files in queries folder change
+  workflow_run:
+    workflows: ["Validate Queries"]
+    types: [completed]
+    branches: [ main ]
 
 jobs:
+  check-validation:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+    - run: echo "Validation passed, proceeding with main workflow"
+
   notify-backend:
+    needs: check-validation
     runs-on: ubuntu-latest
     
     steps:
@@ -19,13 +26,20 @@ jobs:
     - name: Get query file changes
       id: query-changes
       run: |
-        # Get changed files in queries folder only (remove queries/ prefix)
-        CHANGED_QUERY_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^queries/' | sed 's|^queries/||' | jq -R -s -c 'split("\n")[:-1]')
-        echo "changed_query_files=$CHANGED_QUERY_FILES" >> $GITHUB_OUTPUT
-        
-        # Count changes in queries folder
-        QUERY_FILES_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '^queries/' | wc -l)
-        echo "query_files_changed=$QUERY_FILES_CHANGED" >> $GITHUB_OUTPUT
+        # For workflow_run trigger, we need to get the files from the triggering workflow
+        # Check if this was triggered by changes to queries folder
+        if [[ "${{ github.event.workflow_run.head_branch }}" == "main" || "${{ github.event.workflow_run.head_branch }}" == "develop" ]]; then
+          # Get all .yml files in queries as changed (since validation passed)
+          CHANGED_QUERY_FILES=$(find queries -name "*.yml" -type f | sed 's|^queries/||' | jq -R -s -c 'split("\n")[:-1]')
+          echo "changed_query_files=$CHANGED_QUERY_FILES" >> $GITHUB_OUTPUT
+          
+          # Count query files
+          QUERY_FILES_CHANGED=$(find queries -name "*.yml" -type f | wc -l)
+          echo "query_files_changed=$QUERY_FILES_CHANGED" >> $GITHUB_OUTPUT
+        else
+          echo "changed_query_files=[]" >> $GITHUB_OUTPUT
+          echo "query_files_changed=0" >> $GITHUB_OUTPUT
+        fi
         
         # Get all current .yml files in queries folder with their content
         echo "Getting all query files..."

@@ -1,0 +1,120 @@
+name: Validate Queries
+on: [push, pull_request]
+
+jobs:
+  validate-queries:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: pip install pyyaml
+    - name: Validate YAML structure
+      run: |
+        python -c "
+        import yaml
+        import os
+        import sys
+        from pathlib import Path
+        
+        required_fields = ['name', 'cql']
+        valid_log_sources = ['Endpoint', 'Network', 'Identity', 'Cloud', 'Mail', 'Other']
+        valid_tags = ['Hunting', 'Monitoring', 'Detection']
+        valid_modules = ['Insight', 'Identity', 'Spotlight', 'CSPM / ASPM / DSPM', 'Data Protection', 'IT Automation']
+        
+        def check_type(file_path, field_name, value, expected_type, allow_none=False):
+            if allow_none and value is None:
+                return True
+            if not isinstance(value, expected_type):
+                print(f'❌ {file_path}: Field \"{field_name}\" must be {expected_type.__name__}, got {type(value).__name__}')
+                return False
+            return True
+        
+        def check_string_field(file_path, field_name, value, allow_empty=False):
+            if not check_type(file_path, field_name, value, str):
+                return False
+            if not allow_empty and not value.strip():
+                print(f'❌ {file_path}: Field \"{field_name}\" cannot be empty')
+                return False
+            return True
+        
+        def check_list_field(file_path, field_name, value, valid_values=None, allow_empty=True):
+            if not check_type(file_path, field_name, value, list):
+                return False
+            if not allow_empty and len(value) == 0:
+                print(f'❌ {file_path}: Field \"{field_name}\" cannot be empty list')
+                return False
+            for item in value:
+                if not isinstance(item, str):
+                    print(f'❌ {file_path}: All items in \"{field_name}\" must be strings, got {type(item).__name__}')
+                    return False
+                if valid_values and item not in valid_values:
+                    print(f'❌ {file_path}: Invalid value \"{item}\" in \"{field_name}\". Must be one of {valid_values}')
+                    return False
+            return True
+        
+        for yml_file in Path('queries').glob('*.yml'):
+            try:
+                with open(yml_file) as f:
+                    data = yaml.safe_load(f)
+                
+                if not isinstance(data, dict):
+                    print(f'❌ {yml_file}: Root must be a dictionary/object')
+                    sys.exit(1)
+                
+                # Check required fields
+                for field in required_fields:
+                    if field not in data:
+                        print(f'❌ {yml_file}: Missing required field: {field}')
+                        sys.exit(1)
+                    
+                    if field == 'name':
+                        if not check_string_field(yml_file, field, data[field]):
+                            sys.exit(1)
+                    elif field == 'cql':
+                        if not check_string_field(yml_file, field, data[field]):
+                            sys.exit(1)
+                
+                # Check optional string fields
+                string_fields = ['description', 'author']
+                for field in string_fields:
+                    if field in data and data[field] is not None:
+                        if not check_string_field(yml_file, field, data[field], allow_empty=True):
+                            sys.exit(1)
+                
+                # Check optional list fields with validation
+                if 'log_sources' in data and data['log_sources'] is not None:
+                    if not check_list_field(yml_file, 'log_sources', data['log_sources'], valid_log_sources, allow_empty=False):
+                        sys.exit(1)
+                
+                if 'tags' in data and data['tags'] is not None:
+                    if not check_list_field(yml_file, 'tags', data['tags'], valid_tags, allow_empty=False):
+                        sys.exit(1)
+                
+                if 'cs_required_modules' in data and data['cs_required_modules'] is not None:
+                    if not check_list_field(yml_file, 'cs_required_modules', data['cs_required_modules'], valid_modules, allow_empty=False):
+                        sys.exit(1)
+                
+                # Check MITRE IDs with special validation
+                if 'mitre_ids' in data and data['mitre_ids'] is not None:
+                    if not check_list_field(yml_file, 'mitre_ids', data['mitre_ids'], allow_empty=False):
+                        sys.exit(1)
+                    for mitre_id in data['mitre_ids']:
+                        if not mitre_id.startswith('T'):
+                            print(f'❌ {yml_file}: Invalid MITRE ID format: \"{mitre_id}\". Must start with \"T\"')
+                            sys.exit(1)
+                
+                print(f'✅ {yml_file}: Valid structure and types')
+                
+            except yaml.YAMLError as e:
+                print(f'❌ {yml_file}: YAML parsing error: {e}')
+                sys.exit(1)
+            except Exception as e:
+                print(f'❌ {yml_file}: Validation error: {e}')
+                sys.exit(1)
+        
+        print('All YAML files have valid structure and types!')
+        "
