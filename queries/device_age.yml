@@ -1,0 +1,41 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Search for oldest devices
+
+# Description of what the query does and its purpose.
+description: A query to get the age of devices that have the falcon sensor installed.
+
+# The author or team that created the query.
+author: ByteRay
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Monitoring
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName = SensorHeartbeat
+  | in(field=event_platform, values=[?Platform])
+  | ComputerName like ?ComputerName
+  | aid = ?aid
+  | groupBy([aid, ComputerName], function=session([max(@timestamp),min(@timestamp)]))
+  | "Last seen" := formatTime("%d-%b-%Y %H:%M:%S", field=_max)
+  | "First seen" := formatTime("%d-%b-%Y %H:%M:%S", field=_min)
+  | "Age in h" := _duration/3600000
+  | age := formatDuration(_duration, precision=2)
+  | "Age in h" := format(format="%.2f", field=["Age in h"])
+  | sort(field=_duration)
+  | drop([@timestamp,_duration,_max,_min])
+
