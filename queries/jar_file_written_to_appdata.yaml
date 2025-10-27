@@ -1,0 +1,40 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: JAR files written to %AppData%
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1027
+
+# Description of what the query does and its purpose.
+description: |
+  This query detects if a JAR file was written to the %AppData% folder
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules: 
+  - Insight
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=JarFileWritten 
+  | TargetFileName=/\\AppData\\/i
+  | table([aid, @timestamp, TargetFileName, SHA256HashData], limit=1000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+# explanation: |
+
