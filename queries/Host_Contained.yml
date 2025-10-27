@@ -1,0 +1,49 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Remediation - Host Contained
+
+# MITRE ATT&CK technique IDs
+#mitre_ids:
+
+# Description of what the query does and its purpose.
+description: |
+  This query lists all isolated devices and identifies who initiated the isolation.
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Monitoring
+
+cs_required_modules: 
+  - Insight
+  
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #repo=detections EventType = "Event_ExternalApiEvent" ExternalApiType = "Event_UserActivityAuditEvent" OperationName=containment_requested cid=?{cid="*"}
+  | rename(field=AgentIdString,as=aid)
+  | join({
+  $falcon/investigate:aid_base()
+  | groupBy(aid, function=selectLast([MachineDomain, OU, SiteName, ComputerName]), limit=max)
+  }, field=aid, include=[MachineDomain, OU, SiteName, ComputerName], mode=left, start=12h)
+  | default(field=[ComputerName, MachineDomain, OU, SiteName],value="--",replaceEmpty=true)
+  | field_temp:=?{ComputerName="*"}
+  | case {
+  field_temp != /^\*$/ | regex(field=field_temp,regex = "(?<field_matched>.*?)(,|$)", repeat="true") | test(ComputerName==field_matched) | drop([field_matched,field_temp]) ;
+  field_temp = /\*$/ | ComputerName=* | drop([field_temp]) ;
+  }
+  | join({
+  #repo=sensor_metadata #data_source_name = managedassets-ds
+  | GatewayMAC != "--" AND GatewayIP != "--"
+  | groupBy(aid, function=collect([MAC, LocalAddressIP4]), limit=max)
+  }, field=aid, include=[MAC,LocalAddressIP4], mode=left, start=5d)
+  | default(field=[LocalAddressIP4, MAC],value="--",replaceEmpty=true)
+  | timestamp_UTC_readable := formatTime("%FT%T%z", field=@timestamp)
+  | groupBy([@timestamp, timestamp_UTC_readable, UserId, UserIp, ComputerName, LocalAddressIP4, MAC, aid, cid], limit=max)
