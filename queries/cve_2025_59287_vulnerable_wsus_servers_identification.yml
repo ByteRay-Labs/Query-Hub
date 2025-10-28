@@ -1,0 +1,81 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: CVE-2025-59287 vulnerable WSUS servers identification
+
+# Description of what the query does and its purpose.
+description: This query identifies WSUS servers that have the wsusservice enabled and that are vulnerable to CVE-2025-59287
+
+# The author or team that created the query.
+author: Crowdstrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+  - Other
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+  - Monitoring
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Make table that contains Agent ID values of Windows systems with WSUS service discovered
+  | defineTable(query={
+    #repo = "base_sensor" event_platform=Win #event_simpleName="ProcessRollup2" FileName="wsusservice.exe"
+    | groupBy([aid], function=[]
+    ) 
+  }, include=[aid], name="WsusServiceRunning", start=7d)
+  
+  // Get OsVersionInfo events; sent by sensor every 24-hours or at sensor start or update
+  | #event_simpleName=OsVersionInfo event_platform=Win 
+   
+  // Aggregate results to get latest information per Agent ID value
+  | groupBy([aid], function=([selectLast([@timestamp, ComputerName, event_platform, ProductName, LocalAddressIP4])]), limit=max)
+   
+  // Merge details from AID Master
+  | match(file="aid_master_main.csv", field=[aid], include=[ProductType])
+  
+  // Restrict above results to servers or domain controllers
+  | in(field="ProductType", values=[2,3])
+  
+  // Evaluate Windows build numbers
+  | case {
+      event_platform=Win MajorVersion=10 MinorVersion=0 BuildNumber=17763 SubBuildNumber<7922 | Status:="NEEDS PATCH";
+      event_platform=Win MajorVersion=10 MinorVersion=0 BuildNumber=20348 SubBuildNumber<4297 | Status:="NEEDS PATCH";
+      event_platform=Win MajorVersion=10 MinorVersion=0 BuildNumber=26100 SubBuildNumber<6905 | Status:="NEEDS PATCH";
+      event_platform=Win MajorVersion=10 MinorVersion=0 BuildNumber=25398 SubBuildNumber<1916 | Status:="NEEDS PATCH";
+      event_platform=Win MajorVersion=10 MinorVersion=0 BuildNumber=26100 SubBuildNumber<6905 | Status:="NEEDS PATCH";
+      event_platform=Win MajorVersion=10 MinorVersion=0 BuildNumber=14393 SubBuildNumber<8524 | Status:="NEEDS PATCH";
+      event_platform=Win MajorVersion=6 MinorVersion=2 BuildNumber=9200 SubBuildNumber<25728  | Status:="NEEDS PATCH";
+      event_platform=Win MajorVersion=6 MinorVersion=3 BuildNumber=9600 SubBuildNumber<22826  | Status:="NEEDS PATCH";
+      *                                                                                       | Status:="OK";
+  }
+   
+  // Check to see if WSUS service was discovered on host
+  | case {
+    match(file="WsusServiceRunning", field=aid, column=aid) | WsusService := "YES";
+    *                                                       | WsusService := "NO";
+  }
+  
+  // Oragnize table
+  | table([@timestamp, aid, ComputerName, WsusService, Status, ProductName, LocalAddressIP4], sortby=Status, order=asc, limit=50000)
+  
+  // Make ProductType field human readable
+  | $falcon/helper:enrich(field=ProductType)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  This CQL query helps to identify WSUS servers that are vulnerable to CVE-2025-59287
+  
+  Reference: https://www.reddit.com/r/crowdstrike/comments/1ohdzpm/comment/nlp7men/
