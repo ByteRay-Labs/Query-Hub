@@ -1,0 +1,41 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Frequency Analysis via Program Clustering
+
+# MITRE ATT&CK technique IDs
+#mitre_ids:
+
+# Description of what the query does and its purpose.
+description: This query detects potential reconnaissance or lateral movement activity by identifying Windows endpoints where three or more distinct discovery/enumeration tools were executed within 10-minute windows
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules: 
+  - Insight
+  
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Get file names of interest
+  event_platform=Win #event_simpleName=ProcessRollup2 FileName=/(whoami|arp|cmd|net|net1|ipconfig|route|netstat|nslookup|nltest|systeminfo|wmic|tasklist|tracert|ping|adfind|nbtstat|find|ldifde|netsh|wbadmin)\.exe/i
+
+  // Aggregate in 10 minute buckets; set search to 24 hours
+  | bucket(span=10min, field=[cid, aid, ComputerName,ParentBaseFileName,ParentProcessId], function=[count(FileName, distinct=true, as=fNameCount), collect([FileName, CommandLine])], limit=500)
+
+  // Set threshold at three distinct file name values
+  | test(fNameCount>=3)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+#explanation:
