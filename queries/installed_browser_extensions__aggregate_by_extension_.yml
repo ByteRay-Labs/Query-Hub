@@ -1,0 +1,50 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Installed Browser Extensions (Aggregate by Extension)
+
+# Description of what the query does and its purpose.
+description: This query will output a table with all installed browser extensions.
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Get browser extension event
+  #event_simpleName=InstalledBrowserExtension BrowserExtensionId!="no-extension-available"
+  
+  // Aggregate by event_platform, BrowserName, ExtensionID and ExtensionName
+  | groupBy([event_platform, BrowserName, BrowserExtensionId, BrowserExtensionName], function=([count(aid, distinct=true, as=TotalEndpoints)]))
+  
+  // Check to see if the extension is installed on fewer than 50 systems
+  | test(TotalEndpoints<50)
+  
+  // Create a link to the Chrome Extension Store
+  | format("[See Extension](https://chromewebstore.google.com/detail/%s)", field=[BrowserExtensionId], as="Chrome Store Link")
+  
+  // Sort in descending order
+  | sort(order=desc, TotalEndpoints, limit=1000)
+  
+  // Convert the browser name from decimal to human-readable
+  | case{
+      BrowserName="3" | BrowserName:="Chrome";
+      BrowserName="4" | BrowserName:="Edge";
+      *;
+  }
+
