@@ -10,7 +10,7 @@ description: |
   This query provides a list of newly created API Keys, including relevant details such as Client Name and Client ID.
 
 # The author or team that created the query.
-author: CrowdStrike
+author: ByteRay
 
 # The required log sources to run this query successfully in Next-Gen SIEM.
 log_sources:
