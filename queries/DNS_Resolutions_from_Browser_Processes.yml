@@ -1,0 +1,46 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: DNS Resolutions from Browser Processes
+
+# MITRE ATT&CK technique IDs
+#mitre_ids:
+
+# Description of what the query does and its purpose.
+description: This query correlates web browser process executions with their DNS queries to identify which domains were resolved by browser processes on specific endpoints
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules: 
+  - Insight
+  
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Get all process execution and DNS events on Windows
+  (#event_simpleName=ProcessRollup2 OR #event_simpleName=DnsRequest) event_platform=Win
+  | ComputerName=~wildcard(?ComputerName, ignoreCase=true)
+  // Normalize file name value across both events
+  | fileName:=concat([FileName, ContextBaseFileName])
+  // Make sure responsible process is a web browser
+  | in(field="fileName", values=[chrome.exe, firefox.exe, msedge.exe], ignoreCase=true)
+  // Normalize Falcon UPID
+  | falconPID:=TargetProcessId | falconPID:=ContextProcessId
+  // Use selfJoinFilter to make sure execution and DNS resolution occured under the same UPID value
+  | selfJoinFilter(field=[aid, falconPID], where=[{#event_simpleName=ProcessRollup2}, {#event_simpleName=DnsRequest}])
+  // Aggregate results
+  | groupBy([aid, falconPID], function=([collect([ComputerName, UserName, fileName, DomainName])]))
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+#explanation:

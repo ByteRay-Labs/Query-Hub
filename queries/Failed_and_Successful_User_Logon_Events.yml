@@ -1,0 +1,47 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Failed and Successful User Logon Events
+
+# MITRE ATT&CK technique IDs
+#mitre_ids:
+
+# Description of what the query does and its purpose.
+description: This query correlates successful and failed logon attempts per user account to identify potential compromise patterns, focusing on accounts with 4+ failed logons. It provides a comprehensive view of each user's authentication activity including password age and last successful access.
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Monitoring
+
+cs_required_modules: 
+  - Insight
+  
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=/UserLogon/
+  | case{
+      #event_simpleName=UserLogon | SuccessLogonTime:=ContextTimeStamp;
+      #event_simpleName=UserLogonFailed2 | FailedLogonTime:=ContextTimeStamp;
+  }
+  | groupBy([UserSid, UserName], function=([min(FailedLogonTime, as=FirstFailedLogon), max(FailedLogonTime, as=LastFailedLogon), max(SuccessLogonTime, as=LastSuccessfulLogin), count(SuccessLogonTime, as=TotalSuccessfulLogins), count(FailedLogonTime, as=TotalFailedLogins), selectFromMax(field="@timestamp", include=[PasswordLastSet]), {#event_simpleName=UserLogon | selectFromMax(field="@timestamp", include=[ComputerName]) | rename(field="ComputerName", as="LastLoggedOnHost")}]))
+  | TotalFailedLogins>3
+  | $falcon/helper:enrich(field=UserLogonFlags)
+  | formatTime(format="%F %T", field=FirstFailedLogon, as="FirstFailedLogon", timezone="EST")
+  | formatTime(format="%F %T", field=LastFailedLogon, as="LastFailedLogon", timezone="EST")
+  | formatTime(format="%F %T", field=LastSuccessfulLogin, as="LastSuccessfulLogin", timezone="EST")
+  | PasswordLastSet:=PasswordLastSet*1000 | formatTime(format="%F %T", field=PasswordLastSet, as="PasswordLastSet", timezone="EST")
+  | default(value="-", field=[FirstFailedLogon, LastFailedLogon, LastSuccessfulLogin, TotalSuccessfulLogins, TotalFailedLogins, PasswordLastSet, LastLoggedOnHost])
+  | sort(order=desc, TotalFailedLogins, limit=20000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+#explanation:
