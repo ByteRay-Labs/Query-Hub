@@ -1,0 +1,38 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: QUERY NAME
+
+# MITRE ATT&CK technique IDs
+#mitre_ids:
+
+# Description of what the query does and its purpose.
+description: This query correlates processes with Windows Firewall rule modifications they triggered, identifying which executables are creating or modifying firewall rules.
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules: 
+  - Insight
+  
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2
+  | join({#event_simpleName=FirewallSetRule}, key=ContextProcessId, field=TargetProcessId, include=[FirewallRule, FirewallRuleId])
+  | ImageFileName=/.*\\(?<fileName>.*\..*)/
+  | table([aid, UserSid, fileName, FirewallRuleId, FirewallRule, ImageFileName, CommandLine])
+
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+#explanation:
