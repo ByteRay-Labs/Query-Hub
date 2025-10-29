@@ -1,0 +1,59 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Failed User Logon Thresholding
+
+# MITRE ATT&CK technique IDs
+#mitre_ids:
+
+# Description of what the query does and its purpose.
+description: This query identifies Windows failed login attempts that exceed a threshold (5+ failures), helping detect potential brute force attacks or account compromise attempts
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Detection
+
+cs_required_modules: 
+  - Insight
+  
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Get Windows UserLogonFailed events
+  event_platform=Win #event_simpleName=UserLogonFailed2
+
+  // This line is completely optional, but converts SubStatus to hex
+  | SubStatus_hex:=format(field=SubStatus, "%x") | SubStatus_hex:=upper(SubStatus_hex) | SubStatus_hex:=format(format="0x%s", field=[SubStatus_hex])
+
+  // Aggregate results
+  | groupBy([aid, ComputerName, UserName, LogonType, SubStatus_hex, SubStatus], function=([count(aid, as=FailCount), min(ContextTimeStamp, as=FirstLogonAttempt), max(ContextTimeStamp, as=LastLogonAttempt), collect([LocalAddressIP4, aip])]))
+
+  // Perform rate calculations
+  | firstLastDeltaHours:=((LastLogonAttempt-FirstLogonAttempt)/60/60) | round("firstLastDeltaHours")
+  | logonAttemptsPerHour:=(failCount/firstLastDeltaHours) | round("logonAttemptsPerHour")
+
+  // Convert timestamps from epoch to human
+  | FirstLogonAttempt:=formatTime(format="%F %T.%L", field="FirstLogonAttempt")
+  | LastLogonAttempt:=formatTime(format="%F %T.%L", field="LastLogonAttempt")
+
+  // Optional: set threshold for failed logins
+  | FailCount> 5
+
+  // Sort descending
+  | sort(FailCount, order=desc, limit=2000)
+
+  // Convert fields from decimal to human readable
+  | $falcon/helper:enrich(field=LogonType)
+  | $falcon/helper:enrich(field=SubStatus)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+#explanation:
