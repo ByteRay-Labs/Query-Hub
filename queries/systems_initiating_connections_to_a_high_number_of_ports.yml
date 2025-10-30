@@ -1,0 +1,47 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Systems Initiating Connections to a High Number of Ports
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1595
+  - T1046
+
+# Description of what the query does and its purpose.
+description: "Detects hosts that establish network connections across a large number of unique ports within a given period. This behavior may indicate port scanning, network reconnaissance, or potentially malicious enumeration activity originating from a compromised host or unauthorized tool.
+The query aggregates by host and process, listing associated filenames, command lines, and user context to assist with triage."
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=/^(NetworkConnectIP4|ProcessRollup2)$/
+  | falconPID:=TargetProcessId | falconPID:=ContextProcessId
+  | UserID:=UserSid | UserID:=UID
+  | selfJoinFilter(field=[aid, falconPID], where=[{#event_simpleName=NetworkConnectIP4}, {#event_simpleName=ProcessRollup2}])
+  | groupBy([aid, ComputerName, falconPID], function=([
+  	collect([FileName, CommandLine, UserName, UserID]), 
+  	count(RemotePort, as=uniquePortCount), 
+  	collect([RemotePort], separator=", ", limit=25), 
+  	count(RemoteAddressIP4, distinct=true, as=remoteIPcount)
+  	]), limit=max)
+  | FileName=* RemotePort=*
+  | test(uniquePortCount>25)
+
