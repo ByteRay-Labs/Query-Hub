@@ -12,28 +12,16 @@ author: CrowdStrike
 # This will be displayed in the UI to inform the user.
 log_sources:
   - Endpoint
-  - Network
-  - Identity
-  - Cloud
-  - Mail
-  - Other
 
 # The CrowdStrike modules required to run this query.
 cs_required_modules:
   - Insight
-  - Identity
-  - Spotlight
-  - CSPM / ASPM / DSPM
-  - Data Protection
-  - IT Automation
 
 # Tags for filtering and categorization.
 # Include relevant techniques, tactics, or platforms.
 tags:
   - Hunting
-  - Monitoring
-  - Detection
-
+  
 # --- Query Content ---
 # The actual CrowdStrike Query Language (CQL) code.
 # Using the YAML block scalar `|` allows for multi-line strings.
