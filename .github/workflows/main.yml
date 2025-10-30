@@ -85,7 +85,7 @@ jobs:
         QUERY_FILES_CHANGED: ${{ steps.query-changes.outputs.query_files_changed }}
       run: |
         # Create payload with query files information and save to file
-        jq -j -n \
+        jq -c -n \
           --arg repository "$REPO_NAME" \
           --arg event_type "query_changes" \
           --arg commit_sha "$COMMIT_SHA" \
@@ -111,20 +111,8 @@ jobs:
             all_query_files: $all_query_files[0]
           }' > payload.json
 
-        # Debug: Show payload information
-        echo "=== DEBUG: Payload Information ==="
-        echo "Payload size: $(wc -c < payload.json) bytes"
-        echo "Payload SHA256: $(sha256sum payload.json | cut -d' ' -f1)"
-        echo "First 500 bytes (hex):"
-        head -c 500 payload.json | xxd | head -20
-        echo "Last 500 bytes (hex):"
-        tail -c 500 payload.json | xxd | tail -20
-        echo "==================================="
-
         # Create HMAC signature for authentication
         SIGNATURE=$(openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -binary < payload.json | base64)
-
-        echo "Calculated signature: $SIGNATURE"
 
         echo "Notifying backend about $QUERY_FILES_CHANGED query file changes..."
         echo "Total query files included: $(jq 'length' query_files.json)"
