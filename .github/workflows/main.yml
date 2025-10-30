@@ -84,9 +84,6 @@ jobs:
         CHANGED_QUERY_FILES: ${{ steps.query-changes.outputs.changed_query_files }}
         QUERY_FILES_CHANGED: ${{ steps.query-changes.outputs.query_files_changed }}
       run: |
-        # Read all query files content
-        QUERY_FILES_CONTENT=$(cat query_files.json)
-        
         # Create payload with query files information
         PAYLOAD=$(jq -n \
           --arg repository "$REPO_NAME" \
@@ -99,7 +96,7 @@ jobs:
           --argjson changed_files "$CHANGED_QUERY_FILES" \
           --arg files_changed_count "$QUERY_FILES_CHANGED" \
           --arg commit_url "${{ github.event.head_commit.url }}" \
-          --argjson all_query_files "$QUERY_FILES_CONTENT" \
+          --slurpfile all_query_files query_files.json \
           '{
             repository: $repository,
             event_type: $event_type,
@@ -111,15 +108,15 @@ jobs:
             changed_query_files: $changed_files,
             query_files_changed_count: ($files_changed_count | tonumber),
             commit_url: $commit_url,
-            all_query_files: $all_query_files
+            all_query_files: $all_query_files[0]
           }')
-        
+
         # Create HMAC signature for authentication
         SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -binary | base64)
-        
+
         echo "Notifying backend about $QUERY_FILES_CHANGED query file changes..."
-        echo "Total query files included: $(echo "$QUERY_FILES_CONTENT" | jq 'length')"
-        
+        echo "Total query files included: $(jq 'length' query_files.json)"
+
         # Send request to backend
         curl -X POST "$BACKEND_URL/webhook/github" \
           -H "Content-Type: application/json" \
