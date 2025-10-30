@@ -34,7 +34,7 @@ cql: |
   | GrandparentCommandLine=/\.exe"?\s+\d+\s+\d+$/ OR ParentCommandLine=/\.exe"?\s+\d+\s+\d+$/ OR CommandLine=/\.exe"?\s+\d+\s+\d+$/
   
   // Create process lineage tree for easier reading
-  | ProcessLineage:=format(format="%s (%s)\n\t└ %s (%s)\n\t\t└ %s (%s)", field=[GrandparentImageFileName, GrandparentCommandLine, ParentImageFileName, ParentCommandLine, ImageFileName, CommandLine])
+  | ProcessLineage:=format(format="%s (%s)\n   └ %s (%s)\n      └ %s (%s)", field=[GrandparentImageFileName, GrandparentCommandLine, ParentImageFileName, ParentCommandLine, ImageFileName, CommandLine])
   
   // Output deatils to table
   | table([@timestamp, aid, ComputerName, ContextProcessId, ProcessLineage])
