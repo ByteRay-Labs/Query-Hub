@@ -111,8 +111,20 @@ jobs:
             all_query_files: $all_query_files[0]
           }' > payload.json
 
+        # Debug: Show payload information
+        echo "=== DEBUG: Payload Information ==="
+        echo "Payload size: $(wc -c < payload.json) bytes"
+        echo "Payload SHA256: $(sha256sum payload.json | cut -d' ' -f1)"
+        echo "First 500 bytes (hex):"
+        head -c 500 payload.json | xxd | head -20
+        echo "Last 500 bytes (hex):"
+        tail -c 500 payload.json | xxd | tail -20
+        echo "==================================="
+
         # Create HMAC signature for authentication
         SIGNATURE=$(openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -binary < payload.json | base64)
+
+        echo "Calculated signature: $SIGNATURE"
 
         echo "Notifying backend about $QUERY_FILES_CHANGED query file changes..."
         echo "Total query files included: $(jq 'length' query_files.json)"
