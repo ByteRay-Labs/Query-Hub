@@ -1,0 +1,45 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Enriched Process Tree Association Events
+
+# Description of what the query does and its purpose.
+description: |
+  The query filters for AssociateTreeIdWithRoot events, joins them with detection-pattern metadata 
+  from a CSV file, and outputs key fields like timestamp, host, pattern details 
+  and severity for analysis. In short, it enriches process-tree association events
+  with contextual detection information.
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=AssociateTreeIdWithRoot
+  | PatternId =~ match(file="falcon/investigate/detect_patterns.csv", column=PatternId, strict=false)
+  | select([@timestamp, aid, ComputerName, PatternId,name,scenario,scenarioFriendly,description,severity,show_in_ui,killchain_stage,tactic,technique,objective,pattern_updated])
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  ## [AssociateTreeIdWithRoot](https://docs.crowdstrike.com/r/associatetreeidwithroot)
+  This event is generated when there is a detection in the sensor. This event has a data field called PatternId that contains a pattern ID. Pattern IDs correspond to a detection.
+
+  Reference[GitHub CrowdStrike/logscale-community](https://github.com/CrowdStrike/logscale-community-content/blob/main/Queries-Only/Helpful-CQL-Queries/AssociateTreeIdWithRoot%20to%20Pattern%20Details.md)
