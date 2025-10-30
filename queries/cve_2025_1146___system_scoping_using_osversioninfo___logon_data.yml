@@ -3,11 +3,10 @@
 name: "CVE-2025-1146 - System Scoping using OsVersionInfo & Logon Data"
 
 # Description of what the query does and its purpose.
-description: "The query below will look for Linux systems (Linux, K8, Containers) that need to be updated against CVE-2025-1146. 
-
-The query is based on the event OsVersionInfo which is generated every 24-hours, at sensor start, or at sensor update.   
-
-It attempts to merge in LogonType 2 and 10 to determine the last logged on user."
+description: |
+  The query below will look for Linux systems (Linux, K8, Containers) that need to be updated against CVE-2025-1146.
+  The query is based on the event OsVersionInfo which is generated every 24-hours, at sensor start, or at sensor update.
+  It attempts to merge in LogonType 2 and 10 to determine the last logged on user.
 
 # The author or team that created the query.
 author: CrowdStrike

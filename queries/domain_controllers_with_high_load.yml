@@ -3,8 +3,9 @@
 name: Domain Controllers with high load
 
 # Description of what the query does and its purpose.
-description: "Domain controllers with either average CPU usage, average RAM usage that exceeds 80% or Available Disk space < 10GB.
-This indicates low capacity or unexpected excessive usage."
+description: |
+  Domain controllers with either average CPU usage, average RAM usage that exceeds 80% or Available Disk space < 10GB.
+  This indicates low capacity or unexpected excessive usage.
 
 # The author or team that created the query.
 author: CrowdStrike

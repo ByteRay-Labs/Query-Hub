@@ -3,7 +3,7 @@
 name: SOC Efficiency Metrics
 
 # Description of what the query does and its purpose.
-description: "Summarizes CrowdStrike Falcon detections across hosts, showing key lifecycle metrics such as tactic, technique, severity, detection state, and resolution time. Useful for SOC performance tracking, identifying detection patterns, and monitoring time-to-close for incidents."
+description: Summarizes CrowdStrike Falcon detections across hosts, showing key lifecycle metrics such as tactic, technique, severity, detection state, and resolution time. Useful for SOC performance tracking, identifying detection patterns, and monitoring time-to-close for incidents.
 
 # The author or team that created the query.
 author: CrowdStrike

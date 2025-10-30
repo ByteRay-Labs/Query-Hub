@@ -3,7 +3,7 @@
 name: Windows authentication traffic metrics
 
 # Description of what the query does and its purpose.
-description: "Displays Windows-collected authentication traffic metrics from your domain controllers, including Kerberos authentications, NTLM authentications, LDAP binds, and LDAP searches per second. These are native Windows performance counters and do not represent traffic inspected by Identity Protection - they provide baseline visibility into overall domain controller activity."
+description: Displays Windows-collected authentication traffic metrics from your domain controllers, including Kerberos authentications, NTLM authentications, LDAP binds, and LDAP searches per second. These are native Windows performance counters and do not represent traffic inspected by Identity Protection - they provide baseline visibility into overall domain controller activity.
 
 # The author or team that created the query.
 author: CrowdStrike
