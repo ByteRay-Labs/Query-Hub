@@ -85,7 +85,7 @@ jobs:
         QUERY_FILES_CHANGED: ${{ steps.query-changes.outputs.query_files_changed }}
       run: |
         # Create payload with query files information and save to file
-        jq -n \
+        jq -j -n \
           --arg repository "$REPO_NAME" \
           --arg event_type "query_changes" \
           --arg commit_sha "$COMMIT_SHA" \
@@ -112,7 +112,7 @@ jobs:
           }' > payload.json
 
         # Create HMAC signature for authentication
-        SIGNATURE=$(printf '%s' "$(cat payload.json)" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -binary | base64)
+        SIGNATURE=$(openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -binary < payload.json | base64)
 
         echo "Notifying backend about $QUERY_FILES_CHANGED query file changes..."
         echo "Total query files included: $(jq 'length' query_files.json)"
