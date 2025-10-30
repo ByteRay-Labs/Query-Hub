@@ -1,0 +1,48 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Enumerate Windows Driver Loads
+
+# Description of what the query does and its purpose.
+description: The query combines DriverLoad and Event_ModuleSummaryInfoEvent data to associate loaded driver hashes with their certificate details, simplifying file paths and aggregating filenames, subjects, and issuers for analysis of driver authenticity.
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Get all DriverLoad events and Event_ModuleSummaryInfoEvent events so certificate data can be merged in
+  (#event_simpleName=DriverLoad event_platform=Win) OR (#repo=detections ExternalApiType=Event_ModuleSummaryInfoEvent )
+  // Shorten file path from DriverLoad event
+  | case{
+      #event_simpleName=DriverLoad | FilePath=/Device\\HarddiskVolume\d+(?<ShortFileParth>.+$)/;
+      *;
+  }
+  // Create selfJoinFilter
+  | selfJoinFilter(field=[SHA256HashData], where=[{#event_simpleName=DriverLoad}, {#repo=detections ExternalApiType=Event_ModuleSummaryInfoEvent}])
+  // Aggregate
+  | groupBy([SHA256HashData], function=([collect([ShortFileParth, FileName, OriginalFilename, SubjectCN, IssuerCN])]), limit=max)
+  | FileName=*
+  // Set default values
+  | default(value="-", field=[SubjectCN, IssuerCN, OriginalFilename])
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  Reference: [GitHub CrowdStrike/logscale-community](https://github.com/CrowdStrike/logscale-community-content/blob/main/Queries-Only/Helpful-CQL-Queries/Enumerate%20Windows%20Driver%20Loads.md)
