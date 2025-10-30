@@ -112,7 +112,7 @@ jobs:
           }' > payload.json
 
         # Create HMAC signature for authentication
-        SIGNATURE=$(openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -binary < payload.json | base64)
+        SIGNATURE=$(printf '%s' "$(cat payload.json)" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -binary | base64)
 
         echo "Notifying backend about $QUERY_FILES_CHANGED query file changes..."
         echo "Total query files included: $(jq 'length' query_files.json)"
