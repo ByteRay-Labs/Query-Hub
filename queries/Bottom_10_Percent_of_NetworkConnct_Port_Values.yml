@@ -1,0 +1,42 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Rare Remote Ports in Network Connections
+
+# Description of what the query does and its purpose.
+description: The query analyzes IPv4 network connection events, counts occurrences per remote port, calculates their percentage of total connections, and lists only ports representing less than 10% of the traffic.
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+  - Network
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=NetworkConnectIP4
+  | groupBy([RemotePort], function=count(as=count), limit=max) 
+  | [sum(count, as=total), sort(field=RemotePort, order=ascending, limit=20000)] 
+  | percent := 100 * (count / total) 
+  | drop([total]) 
+  | percent < 10
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  Reference: [GitHub CrowdStrike/logscale-community](https://github.com/CrowdStrike/logscale-community-content/blob/main/Queries-Only/Helpful-CQL-Queries/Bottom%2010%25%20of%20NetworkConnct%20Port%20Values.md)
