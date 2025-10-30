@@ -1,0 +1,68 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Domain Controllers with high load
+
+# Description of what the query does and its purpose.
+description: "Domain controllers with either average CPU usage, average RAM usage that exceeds 80% or Available Disk space < 10GB.
+This indicates low capacity or unexpected excessive usage."
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Monitoring
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  //Table to list DC hardware capacity
+  | defineTable(query={#repo=base_sensor #event_simpleName="SystemCapacity"
+  | in(field=cid, values=[?SelectedCid])
+  | match(file="aid_master_main.csv", field=[cid, aid])
+  | ProductType=2
+  // Filters
+  | in(field=MachineDomain, values=[?SelectedDomain])
+  | groupBy([cid, aid], function=selectLast([CpuProcessorName, PhysicalCoreCount, LogicalCoreCount, MemoryTotal]), limit=5000)
+  | MemoryTotal := unit:convert(field=MemoryTotal, to=Gi)
+  }, include=[cid, aid, MemoryTotal, LogicalCoreCount], name="system_capacity", start=3d)
+  
+  | #repo=base_sensor #event_simpleName=ResourceUtilization
+  | in(field=cid, values=[?SelectedCid])
+  // Filter only on DC
+  | match(file="aid_master_main.csv", field=[cid, aid]) | ProductType=2
+  
+  // Filters
+  | in(field=MachineDomain, values=[?SelectedDomain])
+  
+  | groupBy([cid, aid], function=[ avg(AverageUsedRam, as=AverageUsedRam), avg(AverageCpuUsage, as=AverageCpuUsage), selectLast([UsedDiskSpace, AvailableDiskSpace])], limit=5000)
+  
+  // Get DC capacity
+  | match(file="system_capacity", field=[cid, aid], strict=false)
+  
+  // Memory capacity & usage
+  | AverageUsedRam := unit:convert(field=AverageUsedRam, from=Mi, to=Gi)
+  | AverageUsedRam := (AverageUsedRam/MemoryTotal)*100
+  
+  | ThresholdMemory:=80
+  | ThresholdCPU:=80
+  | ThresholdDiskSpace:=10
+  | HighUsage:= false
+  | case {
+    test(AverageUsedRam>=ThresholdMemory) | HighUsage:= true;
+    test(AverageCpuUsage>=ThresholdCPU) | HighUsage:= true;
+    test(AvailableDiskSpace<ThresholdDiskSpace) | HighUsage:= true;
+  }
+  | stats({HighUsage="true"| count(field=aid, distinct=true)})
+
