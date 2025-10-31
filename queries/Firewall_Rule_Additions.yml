@@ -1,6 +1,6 @@
 # --- Query Metadata ---
 # Human-readable name for the query. Will be displayed as the title.
-name: QUERY NAME
+name: Firewall Rule Additions
 
 # MITRE ATT&CK technique IDs
 #mitre_ids:
