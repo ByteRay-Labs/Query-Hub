@@ -1,0 +1,32 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Cloud MFA Violation IOMs
+
+# Description of what the query does and its purpose.
+description: This query outputs all identified indicators of misconfigurations (IOMs) related to MFA violations.
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Cloud
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - CSPM / ASPM / DSPM
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Monitoring
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  CloudService="IAM" | in(field="policy_id", values=["188", "10", "189", "602", "187", "539"])
+  | groupBy([PolicyStatement])
+  | #type != "KGHOST_Gametime"
+
