@@ -1,0 +1,37 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Chromium-Based Browser Hunting via DLL Load
+
+# Description of what the query does and its purpose.
+# Using the YAML block scalar `|` allows for multi-line strings.
+description: |
+  This query identifies Chromium-based browsers by detecting the loading of chrome.dll into running processes. Unlike simple process name checks, this method helps uncover browsers that may not be named chrome.exe but still rely on Chromium components. The query excludes known chrome.exe processes to highlight less obvious Chromium-based browsers, although it’s important to note that not all Chromium-based browsers necessarily load chrome.dll.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  defineTable(query={#event_simpleName=ClassifiedModuleLoad
+  | ImageFileName=/chrome\.dll/i
+  | TargetImageFileName!=/chrome\.exe/i}, include=[ComputerName, TargetProcessId], name="DllLoads")
+  | #event_simpleName=ProcessRollup2 TargetProcessId=*
+  | match(table="DllLoads", field=[TargetProcessId])
+  | table([@timestamp, aid, ComputerName, FileName, TargetProcessId, ImageFileName, TargetImageFileName])
+
