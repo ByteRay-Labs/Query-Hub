@@ -1,0 +1,35 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Users creating Network Shares
+
+# Description of what the query does and its purpose.
+# Using the YAML block scalar `|` allows for multi-line strings.
+description: |
+  The Query shows all new created Network Shares.
+
+# The author or team that created the query.
+author: CrowdStrike
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName="NetShareAdd"
+  | wildcard(field=UserName, pattern=?UserName, ignoreCase=true)
+  | wildcard(field=ComputerName, pattern=?ComputerName, ignoreCase=true)
+  | groupBy([ComputerName, UserName, ShareName, SharePath, ShareData, @timestamp])
+
