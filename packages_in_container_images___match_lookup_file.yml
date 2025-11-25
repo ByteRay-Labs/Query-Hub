@@ -1,0 +1,46 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Packages in Container Images - Match Lookup File
+
+# Description of what the query does and its purpose.
+# Using the YAML block scalar `|` allows for multi-line strings.
+description: |
+  Parses packages from ImageVulnerabilityEvents and cross-references it with a lookup file to identify matching entries.
+
+# The author or team that created the query.
+author: ByteRay
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Cloud
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - CSPM / ASPM / DSPM
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  ImageScanEventType = ImageVulnerabilityEvent
+  | array:eval("CVEMapping[]", asArray="PackageName[]", function={PackageName := splitString(by="\|",field="CVEMapping",index=1)})
+  | array:drop("CVEMapping[]")
+  | array:dedup("PackageName[]")
+  | array:reduceAll(array="PackageName[]",var=PackageName, function=groupBy(PackageName))
+  | match(file="compromised_npm_packages.csv", field="PackageName",column="PackageName", ignoreCase=true)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  A lookup file with a list of packages needs to be uploaded first. 
+  Example:
+  |PackageName|Version|
+  |---|---|
+  |Package|1.0.0|
