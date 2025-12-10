@@ -1,0 +1,55 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Detection of DNS Requests to AI-Related Domains
+
+# Description of what the query does and its purpose.
+# Using the YAML block scalar `|` allows for multi-line strings.
+description: |
+  This query identifies DNS requests to domains listed in the AI-Domains.csv lookup. It filters out browser-initiated traffic from Chrome and Edge. The result highlights which hosts and processes are generating the most DNS requests to those domains.
+
+# The author or team that created the query.
+author: ByteRay
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=DnsRequest event_platform=Win
+  | match(file="AI-Domains.csv", field=[DomainName],column=Domain,ignoreCase=true,mode=glob)
+  | !in(field=ContextBaseFileName, values=[msedge.exe,chrome.exe],ignoreCase=true)
+  | SourceProcess := ContextBaseFileName
+  | groupBy([DomainName, ComputerName,SourceProcess],function=count(as=Count))
+  | sort(field=Count,type=number,order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  The query relies on an lookup file with at least one column named Domain. The lookup provides the set of AI-related domains to check against. Without this file, the match() operator cannot resolve which DNS requests should be considered relevant.
+  
+  **Example**
+  
+  |Domain
+  |---
+  |chat.openai.com
+  |chatgpt.com
+  |openai.com
+  |claude.ai
+  |anthropic.com
+  |bard.google.com
+  |*.ai
+  |*.openai.com
