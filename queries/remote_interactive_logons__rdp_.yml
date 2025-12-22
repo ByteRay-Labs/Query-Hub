@@ -1,0 +1,49 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Remote Interactive Logons (RDP)
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1021
+
+# Description of what the query does and its purpose.
+# Using the YAML block scalar `|` allows for multi-line strings.
+description: |
+  Identifies remote interactive logons on a specific endpoint. The query filters UserIdentity events for LogonType=10, which typically indicates Remote Desktop or similar remote access sessions. Results are scoped by the provided aid and display up to 1,000 events, including timestamp, username, user principal, and the logon server. Useful for detecting and reviewing remote access activity during investigations or routine monitoring.
+
+# The author or team that created the query.
+author: ByteRay
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+  - Identity
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=UserIdentity
+  | aid=?aid LogonType=10
+  |table([@timestamp,UserName,UserPrincipal,LogonServer],limit=1000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  **Use Cases**
+  - Review RDP usage on a host
+  - Investigate potential unauthorized remote access
+  - Support incident response and access audits
+  
+  LogonType=10 corresponds to remote interactive logons. The aid parameter must be set to the target endpoint.
