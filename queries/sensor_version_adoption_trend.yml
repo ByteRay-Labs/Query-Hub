@@ -1,0 +1,34 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Sensor Version Adoption Trend
+
+# Description of what the query does and its purpose.
+# Using the YAML block scalar `|` allows for multi-line strings.
+description: |
+  Visualizes the daily distribution of Sensor versions across the environment. It groups versions by Major and Minor releases (e.g., 6.45) to monitor the rollout of updates and identify legacy versions.
+
+# The author or team that created the query.
+author: ByteRay
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Monitoring
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=OsVersionInfo 
+  | AgentVersion=/(?<ShortAgentVersion>\d+\.\d+\.)/
+  | timeChart(ShortAgentVersion,span="1d")
+
