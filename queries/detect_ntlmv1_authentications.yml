@@ -6,7 +6,6 @@ name: Detect NTLMv1 Authentications
 # Using the YAML block scalar `|` allows for multi-line strings.
 description: |
   This query detects NTLM v1 authentications using Falcon ITP telemetry. 
-  [Closing the Door on Net-NTLMv1: Releasing Rainbow Tables to Accelerate Protocol Deprecation](https://cloud.google.com/blog/topics/threat-intelligence/net-ntlmv1-deprecation-rainbow-tables?linkId=38338466&hl=en)
 
 # The author or team that created the query.
 author: ByteRay GmbH
@@ -33,3 +32,5 @@ cql: |
   | network.protocol="ntlm_v1"
   | groupBy([SourceAccountUserName, host.hostname, TargetServerHostName])
 
+explanation: |
+  [Closing the Door on Net-NTLMv1: Releasing Rainbow Tables to Accelerate Protocol Deprecation](https://cloud.google.com/blog/topics/threat-intelligence/net-ntlmv1-deprecation-rainbow-tables?linkId=38338466&hl=en)
