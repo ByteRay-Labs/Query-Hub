@@ -1,6 +1,6 @@
 # --- Query Metadata ---
 # Human-readable name for the query. Will be displayed as the title.
-name: Falcon Sensor Version Drift Monitoring
+name: Falcon Sensor Version Drift Monitoring (Windows)
 
 # Description of what the query does and its purpose.
 # Using the YAML block scalar `|` allows for multi-line strings.
