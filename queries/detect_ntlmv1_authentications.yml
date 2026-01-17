@@ -1,0 +1,35 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Detect NTLMv1 Authentications
+
+# Description of what the query does and its purpose.
+# Using the YAML block scalar `|` allows for multi-line strings.
+description: |
+  This query detects NTLM v1 authentications using Falcon ITP telemetry. 
+  [Closing the Door on Net-NTLMv1: Releasing Rainbow Tables to Accelerate Protocol Deprecation](https://cloud.google.com/blog/topics/threat-intelligence/net-ntlmv1-deprecation-rainbow-tables?linkId=38338466&hl=en)
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Identity
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Identity
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event.dataset="falcon.identity"
+  | network.protocol="ntlm_v1"
+  | groupBy([SourceAccountUserName, host.hostname, TargetServerHostName])
+
