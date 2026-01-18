@@ -43,9 +43,9 @@ cql: |
   | match(time, field=[aid,Current_Version],column=[aid,AgentVersion])
   | Current_Version=/(?<Short_Current_Version>\d+\.\d+)/
   | Old_Version=/(?<Short_Old_Version>\d+\.\d+)/
-  | if(condition=Current_Version==Old_Version, then="No change", else=if(condition= Short_Current_Version<Short_Old_Version, then="Downgrade", else=if(condition= Short_Current_Version>Short_Old_Version, then="Update", else=0)))
+  | if(condition=Current_Version==Old_Version, then="No change", else=if(condition= Short_Current_Version<Short_Old_Version, then="Downgrade", else=if(condition= Short_Current_Version>Short_Old_Version, then="Upgrade", else=0)))
   | Status := rename(field="_if")
-  | "Changed at" := if(condition=Current_Version==Old_Version, then="n/a", else=formatTime(format="%Y/%m/%d %H:%M:%S", field=_min, as="Zeitpunkt"))
+  | "Changed at" := if(condition=Current_Version==Old_Version, then="n/a", else=formatTime(format="%Y/%m/%d %H:%M:%S", field=_min, as="Timestamp"))
   | "Old Version" := rename("Old_Version")
   | "Current Version" := rename("Current_Version")
   | table([ComputerName,aid, "Old Version","Current Version",Status,"Changed at"])
