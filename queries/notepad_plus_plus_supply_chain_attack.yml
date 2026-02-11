@@ -1,0 +1,62 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Notepad++ supply chain attack
+
+# Description of what the query does and its purpose.
+# Using the YAML block scalar `|` allows for multi-line strings.
+description: |
+  This query detects a state-sponsored supply chain attack where the legitimate Notepad++ updater (gup.exe) is hijacked to download the Chrysalis backdoor. It identifies the attack by spotting unauthorized network connections from the updater, malicious DLL side-loading (e.g., BluetoothService.exe loading log.dll), and data exfiltration commands involving curl and temp.sh.
+
+# The author or team that created the query.
+author: Aamir Muhammad
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  |case{
+  #event_simpleName=/DNS/iF ContextBaseFileName=/^gup\.exe$/iF DomainName!=/github.com|notepad-plus-plus.org|.globalsign.com|release-assets.githubusercontent.com/iF| DetectionLogic := "GUP beacon to C2C" | Indicator := DomainName | Risk := "HIGH";
+  in(field="SHA256HashData", values=["02368c6b62cb392dddd35cfc6cb8c1154f7ebdceb9fb559cefc301982d6fbbf9","0dcd846cdfdc793fab39a3c9860e0f6ab68cdbdcf4b03a87e8a02df0d3e1249f","5dd766a7a378c97eb8c9fe9a4bff678e3c9a05386911f4296e094407b99c23d2","6a7a8aa91109c25d57fe2ca71c150ca09afc1bf10c98376adf959dbc91010394","a511be5164dc1122fb5a7daa3eef9467e43d8458425b15a640235796006590c9","078a9e5c6c787e5532a7e728720cbafee9021bfec4a30e3c2be110748d7c43c5","0a9b8df968df41920b6ff07785cbfebe8bda29e6b512c94a3b2a83d10014d2fd","2da00de67720f5f13b17e9d985fe70f10f153da60c9ab1086fe58f069a156924","3bdc4c0637591533f1d4198a72a33426c01f69bd2e15ceee547866f65e26b7ad","4a52570eeaf9d27722377865df312e295a7a23c3b6eb991944c2ecd707cc9906","4c2ea8193f4a5db63b897a2d3ce127cc5d89687f380b97a1d91e0c8db542e4f8","77bfea78def679aa1117f569a35e8fd1542df21f7e00e27f192c907e61d63a2e","7add554a98d3a99b319f2127688356c1283ed073a084805f14e33b4f6a6126fd","831e1ea13a1bd405f5bda2b9d8f2265f7b1db6c668dd2165ccc8a9c4c15ea7dd","8ea8b83645fba6e23d48075a0d3fc73ad2ba515b4536710cda4f1f232718f53e","9276594e73cda1c69b7d265b3f08dc8fa84bf2d6599086b9acc0bb3745146600","a511be5164dc1122fb5a7daa3eef9467e43d8458425b15a640235796006590c9","b4169a831292e245ebdffedd5820584d73b129411546e7d3eccf4663d5fc5be3","e7cd605568c38bd6e0aba31045e1633205d0598c607a855e2e1bca4cca1c6eda","f4d829739f2d6ba7e3ede83dad428a0ced1a703ec582fc73a4eee3df3704629a","fcc2765305bcd213b7558025b2039df2265c3e0b6401e4833123c461df2de51a"],ignoreCase=true)| DetectionLogic := "Malicious SHA256 Hash Execution" | Indicator := SHA256HashData | Risk := "HIGH";
+  in(field="SHA1HashData", values=["06a6a5a39193075734a32e0235bde0e979c27228","07d2a01e1dc94d59d5ca3bdf0c7848553ae91a51","0d0f315fd8cf408a483f8e2dd1e69422629ed9fd","13179c8f19fbf3d8473c49983a199e6cb4f318f0","21a942273c14e4b9d3faa58e4de1fd4d5014a1ed","259cd3542dea998c57f67ffdd4543ab836e3d2a3","2a476cfb85fbf012fdbe63a37642c11afa5cf020","2ab0758dda4e71aee6f4c8e4c0265a796518f07d","3090ecf034337857f786084fb14e63354e271c5d","46654a7ad6bc809b623c51938954de48e27a5618","4c9aac447bf732acc97992290aa7a187b967ee2c","573549869e84544e3ef253bdba79851dcde4963a","6444dab57d93ce987c22da66b3706d5d7fc226da","73d9d0139eaf89b7df34ceeb60e5f8c7cd2463bf","7e0790226ea461bcc9ecd4be3c315ace41e1c122","813ace987a61af909c053607635489ee984534f4","821c0cafb2aab0f063ef7e313f64313fc81d46cd","8e6e505438c21f3d281e1cc257abdbf7223b7f5a","90e677d7ff5844407b9c073e3b7e896e078e11cd","94dffa9de5b665dc51bc36e2693b8a3a0a4cc6b8","9c0eff4deeb626730ad6a05c85eb138df48372ce","9c3ba38890ed984a25abb6a094b5dbf052f22fa7","9df6ecc47b192260826c247bf8d40384aa6e6fd6","9fbf2195dee991b1e5a727fd51391dcc2d7a4b16","bd4915b3597942d88f319740a9b803cc51585c4a","bf996a709835c0c16cce1015e6d44fc95e08a38a","c68d09dd50e357fd3de17a70b7724f8949441d77","ca4b6fe0c69472cd3d63b212eb805b7f65710d33","d0662eadbe5ba92acbd3485d8187112543bcfbf5","d7ffd7b588880cf61b603346a3557e7cce648c93","da39a3ee5e6b4b0d3255bfef95601890afd80709","defb05d5a91e4920c9e22de2d81c5dc9b95a9a7c","f7910d943a013eede24ac89d6388c1b98f8b3717"],ignoreCase=true)| DetectionLogic := "Malicious SHA1 Hash Execution" | Indicator := SHA1HashData | Risk := "HIGH";
+  in(field="RemoteAddressIP6", values=["2001:19f0:6801:950:5400:5ff:feb2"])| DetectionLogic := "C2C IPv6" | Indicator := RemoteAddressIP6 | Risk := "MEDIUM";
+  in(field="RemoteIP", values=["124.222.137.114","138.0.0.0","140.0.0.0","45.32.144.255","45.76.155.202","45.77.31.210","59.110.7.32","95.179.213.0","212.30.60.8","94.190.195.237","146.70.113.105","194.114.136.211","8.216.128.215","116.251.216.119","217.69.5.44","188.166.199.140","61.4.102.97","172.233.246.7"])| DetectionLogic := "C2C IP" | Indicator := RemoteIP | Risk := "MEDIUM";
+  in(field="DomainName", values=["api.skycloudcenter.com","api.wiresguard.com","cdncheck.it.com","proshow.crs","proshow.phd","safe-dns.it.com","skycloudcenter.com","temp.sh","wiresguard.com"],ignoreCase=true) | DetectionLogic := "C2C Domain" | Indicator := DomainName | Risk := "MEDIUM";
+  ImageFileName=/\\(BluetoothService|system|loader1|loader2|s047t5g|ConsoleApplication2|3yzr31vk|uffhxpSy)\.exe$/i | DetectionLogic := "Suspicious Filename" | Indicator := ImageFileName | Risk := "LOW";
+   #event_simpleName=ClassifiedModuleLoad
+  |rename(field="ImageFileName", as="DllLoadImageFileName")
+  |rename(field="TargetImageFileName", as="ProcessName")
+  |(ProcessName=/BluetoothService.exe/iF and DllLoadImageFileName=/log.dll/iF)
+   OR (OriginalFilename=/BDSubWiz.exe/iF and DllLoadImageFileName=/log.dll/iF)
+   OR (ProcessName=/svchost.exe/iF and DllLoadImageFileName=/libtcc.dll/iF)
+    OR (ProcessName=/ConsoleApplication.*\.exe/iF and DllLoadImageFileName=/clipc.dll/iF)| DetectionLogic := "Suspicious DLL SideLoading" | Indicator := DllLoadImageFileName | Risk := "HIGH"; 
+  ImageFileName=/\\(u\.bat|conf\.c)$/i | DetectionLogic := "Suspicious Script/Code" | Indicator := ImageFileName | Risk := "MEDIUM";
+  CommandLine=/curl.exe/iF CommandLine=/-F.*\.txt.*temp.sh/iF | DetectionLogic := "Exfiltration" | Indicator := CommandLine | Risk := "HIGH";
+  CommandLine=/cmd.*\/c.*>.*.txt/iF CommandLine=/whoami|tasklist|systeminfo|netstat -ano/iF | DetectionLogic := "Recon" | Indicator := CommandLine | Risk := "MEDIUM";
+  #event_simpleName=/Written/iF (FilePath=/\\ProShow\\load|\Bluetooth\\BluetoothService|\\Adobe\\Scripts/iF or ImageFileName=/\\Adobe\\Scripts\\alien.ini/iF)| DetectionLogic := "2dary Payload write" | Indicator := FileName | Risk := "MEDIUM";
+  #event_simpleName=/ProcessAncestryInformation|Processrollup2/iF ParentBaseFileName=/^gup\.exe$/iF FileName!=/explorer.exe|^npp\..*\.Installer.*\.exe$/iF FileName=/update.*\.exe|AutoUpdater\.exe|curl\.exe|cmd\.exe|powershell\.exe|wscript\.exe|cscript\.exe|rundll32\.exe/iF or FilePath=/\\Temp\\|\\tmp\\|AppData\\Local\\/iF| DetectionLogic := "Initial Malicious Execution" | Indicator := FileName | Risk := "HIGH";
+  }
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  https://notepad-plus-plus.org/news/hijacked-incident-info-update/
+  https://notepad-plus-plus.org/news/clarification-security-incident/
+  
+  https://securelist.com/notepad-supply-chain-attack/118708/
+  https://notepad-plus-plus.org/assets/data/IoCFromFormerHostingProvider.txt
+  https://www.rapid7.com/blog/post/tr-chrysalis-backdoor-dive-into-lotus-blossoms-toolkit/
