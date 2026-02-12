@@ -1,0 +1,45 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: TestQuery
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1055
+
+# Description of what the query does and its purpose.
+description: |
+  TestDescription
+
+# The author or team that created the query.
+author: TestAuthor
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+  - Network
+  - Cloud
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+  - Identity
+  - Data Protection
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+  - Monitoring
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #testingquery
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  # Testexplanation
+  dsadsada
