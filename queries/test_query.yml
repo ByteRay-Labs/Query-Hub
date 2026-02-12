@@ -1,0 +1,25 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Test Query
+
+# Description of what the query does and its purpose.
+description: |
+  A test
+
+# The author or team that created the query.
+author: Me
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2
+
