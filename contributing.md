@@ -9,7 +9,8 @@ Here’s the process:
 
 2. **Create your query in the right format**  
    - Use our online **[CQL Hub YAML Builder](https://cql-hub.com)** to easily create a new `.yml` file in the correct format.  
-   - This ensures consistency across all queries in the repository.  
+   - This ensures consistency across all queries in the repository.
+   - NEW: You can directly submit your Query. In this case we'll review and push it to Github.
 
 3. **Add your query to the repo**  
    - Fork this repository.  
