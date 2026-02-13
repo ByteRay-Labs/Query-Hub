@@ -8,7 +8,7 @@ description: |
   This query aggregates SensorHeartbeat events by operating system platform to show the relative distribution of endpoints per OS. It is well suited for visualization as a pie chart, providing a quick overview of platform coverage and identifying imbalances or unexpected OS presence in the environment.
 
 # The author or team that created the query.
-author: ByteRay
+author: ByteRay GmbH
 
 # The required log sources to run this query successfully in Next-Gen SIEM.
 # This will be displayed in the UI to inform the user.
