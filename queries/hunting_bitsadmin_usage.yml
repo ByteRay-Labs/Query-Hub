@@ -1,0 +1,96 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Hunting Bitsadmin usage
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1197
+
+# Description of what the query does and its purpose.
+description: |
+  This query implements a multi-hypothesis threat hunting workflow to detect abuse of the Windows Background Intelligent Transfer Service (BITS). It uses a case statement to classify incoming telemetry into four distinct detection hypotheses.
+
+# The author or team that created the query.
+author: Oussama AZRARA
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  | case {
+      #event_simpleName=ProcessRollup2
+      AND (ImageFileName=/\\bitsadmin\.exe$/i OR OriginalFilename="bitsadmin.exe")
+      AND (
+          CommandLine=/\/transfer/i
+          OR CommandLine=/\/addfile/i
+          OR CommandLine=/\/download/i
+          OR CommandLine=/\/SetNotifyCmdLine/i
+          OR CommandLine=/\/resume/i
+          OR CommandLine=/https?:\/\//i
+          OR CommandLine=/ftp:\/\//i
+      )
+      AND NOT (
+          ParentBaseFileName=svchost.exe
+          OR ParentBaseFileName=msiexec.exe
+      )
+      | hunt_hypothesis := "H1_BITSADMIN_DIRECT_EXEC" ;
+      #event_simpleName=ScriptControlScanV2 OR #event_simpleName=CommandHistory
+      AND (
+          ScriptContent=/Start-BitsTransfer/i
+          OR ScriptContent=/Import-Module\s+BitsTransfer/i
+          OR ScriptContent=/BITS\.IBackgroundCopyManager/i
+      )
+      AND (
+          ScriptContent=/https?:\/\//i
+          OR ScriptContent=/\-Source/i
+          OR ScriptContent=/\-Destination/i
+      )
+      | hunt_hypothesis := "H2_POWERSHELL_BITSTRANSFER" ;
+      #event_simpleName=ProcessRollup2
+      AND (
+          CommandLine=/SetNotifyCmdLine/i
+          OR CommandLine=/SetMinRetryDelay/i
+          OR CommandLine=/SetNoProgressTimeout/i
+      )
+      AND NOT CommandLine=/Windows.Update/i
+      | hunt_hypothesis := "H3_BITS_PERSISTENCE" ;
+      #event_simpleName=ProcessRollup2
+      AND ImageFileName=/\\bitsadmin\.exe$/i
+      AND CommandLine=/getieproxy/i
+      | hunt_hypothesis := "H4_BITS_PROXY_RECON" ;
+      * | hunt_hypothesis := "NO_MATCH" ;
+  }
+  // Exclure les non-matchs
+  | hunt_hypothesis != "NO_MATCH"
+  | select([
+      @timestamp,
+      hunt_hypothesis,
+      ComputerName,
+      UserName,
+      UserSid,
+      ImageFileName,
+      CommandLine,
+      ParentBaseFileName,
+      ParentCommandLine,
+      ScriptContent,
+      SHA256HashData
+  ])
+  | sort(@timestamp, order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  H1 catches direct execution of bitsadmin.exe with suspicious command-line arguments (such as /transfer, /addfile, /download, /SetNotifyCmdLine, or URLs) while excluding legitimate parent processes like svchost.exe and msiexec.exe. H2 detects PowerShell-based BITS abuse by scanning script block logging and command history events for cmdlets like Start-BitsTransfer or direct COM object invocation (BITS.IBackgroundCopyManager) combined with network-related parameters. H3 focuses specifically on BITS persistence mechanisms by flagging commands that set notification callbacks (SetNotifyCmdLine), retry delays, or timeout values excluding legitimate Windows Update activity. H4 identifies proxy reconnaissance via bitsadmin /getieproxy, a technique attackers use to discover proxy configurations before exfiltrating data.
