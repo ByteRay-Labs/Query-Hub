@@ -1,0 +1,60 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Browser Extensions Installed via Webstore or Sideloading
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1176.001
+
+# Description of what the query does and its purpose.
+description: |
+  Looks for any browser extensions that were installed with direct access to the chromium web store or if it was loaded via sideload. See explanation for further detail.
+
+# The author or team that created the query.
+author: "@jsonSevilla"
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=InstalledBrowserExtension
+  |$InstalledBrowserExtensionNormalized()
+  | event_platform=Win
+  |BrowserExtensionInstallMethod=/Sideloaded_via_Dev_Mode|^Webstore$/iF
+  | case
+  {
+  BrowserName="Chrome" | format("[See Extension](https://chromewebstore.google.com/detail/%s)",field=[BrowserExtensionId],as="Extension Store Link");
+  BrowserName="Edge" | format("[See Extension](https://microsoftedge.microsoft.com/addons/detail/%s)",field=[BrowserExtensionId],as="Extension Store Link");
+  BrowserName="Firefox" | format("[See Extension](https://addons.mozilla.org/en-US/firefox/addon/%s)",field=[BrowserExtensionId],as="Extension Store Link");
+  BrowserName="Safari" | format("[See Extension](https://apps.apple.com/it/app/%s)",field=[BrowserExtensionId],as="Extension Store Link")
+  }
+  |BrowserExtensionId!=/jlhmfgmfgeifomenelglieieghnjghma|kfbdpdaobnofkbopebjglnaadopfikhh|cgjgjfacjflmgphhhepmbhhbgjieaecn|efaidnbmnnnibpcajpcglclefindmkaj|ikdddppdhmjcdfgilpnbkdeggoiicjgo|fjnfhlipapegbaekifmncoeoofmcbeff|niefiagpjodjbabljbillefnehgbpnna|njkcecfgjklpakiaknffokgoafimlggp/iF
+  | BrowserExtensionInstalledTimestamp:=BrowserExtensionInstalledTimestamp*1000
+  // Get delta from install time to timestamp in milliseconds
+  | InstallDelta:=@timestamp-BrowserExtensionInstalledTimestamp
+  | Extension_Installed_Date := formatTime("%Y/%m/%d %H:%M:%S", field=BrowserExtensionInstalledTimestamp, locale=en_US, timezone=Z)
+  | test(InstallDelta <= duration("15m"))
+  |$rtr()
+  | select([Extension_Installed_Date,@timestamp, BrowserExtensionId,"Extension Store Link",BrowserExtensionName,BrowserExtensionStatusEnabled,BrowserExtensionVersion,BrowserExtensionInstallMethod,BrowserExtensionPath,"BrowserExtensionRequestedPermissions",ComputerName,UserName,RTR])
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  ## The Hunt
+  Looking at sideloaded browser extensions, one may see a bunch of unique browser extensions installed via dev mode. This calls out to two things, how are users bypassing a security control to load an unpacked browser extension? 
+  
+  ## The Threat
+  This query shows a lot of hits where users are sideloading extensions in the environment, which can present a possible threat vector if browser extension(s) were to be compromised. A threat actor can install a malicious c2 framework (RedExt/Chrome Alone). 
+  
+  ## The Risk
+  A risk factor is mistakenly or being tricked into installing a malicious extension which then all activity is being observed by the threat actor because there aren't any special privileges required in order to download a CRX file, and load it into CLI. Another risk is having a dormant browser extension installed and it auto-updates into a compromised version of the browser extension where it performs nefarious activity without your awareness.
