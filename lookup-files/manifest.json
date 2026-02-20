@@ -1,7 +1,6 @@
 [
   {
     "name": "rmm-tools.csv",
-    "description": "RMM Tools and Domains",
-    "url": "https://raw.githubusercontent.com/ByteRay-Labs/Query-Hub/refs/heads/main/lookup-files/rmm-tools.csv"
+    "description": "RMM Tools and Domains"
   }
 ]
