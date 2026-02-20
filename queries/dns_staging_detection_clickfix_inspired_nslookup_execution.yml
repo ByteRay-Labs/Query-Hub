@@ -1,0 +1,63 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: "DNS Staging Detection: ClickFix-Inspired nslookup Execution"
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1071.004
+  - T1059.001
+  - T1204.002
+
+# Description of what the query does and its purpose.
+description: |
+  Detects nslookup activity used for DNS-based staging, specifically targeting the pattern of querying external nameservers to retrieve and execute malicious payloads, as seen in recent ClickFix attacks. This hunt is highly valuable as it identifies a shift away from heavily-monitored tools like mshta and PowerShell toward abusing trusted network utilities to bypass standard firewalls and blend with legitimate DNS traffic.
+
+# The author or team that created the query.
+author: cap10
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Focus on process creation for nslookup
+  #event_simpleName = ProcessRollup2
+  | ImageFileName = /\\nslookup\.exe$/i
+  // Detect ClickFix patterns: Querying external IPs or specific record types (TXT/ALL)
+  | CommandLine = /nslookup.*?\s+\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/i
+    or CommandLine = /(-q(uerytype)?=)?(txt|all)/i
+  // Target the specific ClickFix piping pattern: filtering for "Name:" and executing
+  | CommandLine = /\|\s*findstr\s*.*Name:/i 
+    or CommandLine = /iex|powershell/i
+  // Filter out standard administrative noise
+  | ParentBaseFileName != /services\.exe|monitoring_agent\.exe/i
+  // Aggregate findings
+  | groupBy([ComputerName, UserName, CommandLine, ParentBaseFileName], function=count())
+  | table([ComputerName, UserName, CommandLine, ParentBaseFileName, _count])
+  | sort(_count, order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  Targeting trusted binaries: Monitors nslookup.exe, which attackers now prefer because it is less likely to be blocked by security software than mshta or PowerShell.
+  
+  External DNS Queries: Specifically looks for nslookup commands that provide a direct IP address for an external nameserver, bypassing the system's default, monitored DNS resolver.
+  
+  Staging Pattern: Detects the use of findstr on the nslookup output, a known ClickFix technique to parse the "Name:" field from a DNS response and treat it as a secondary command for execution.
+  
+  Execution Chain: Monitors for the piping of this output directly into execution engines like PowerShell or IEX.
+  
+  Evasion Detection: DNS traffic is frequently allowed through corporate firewalls, making this a "lightweight staging channel" that effectively hides data exfiltration and payload delivery in plain sight.
