@@ -1,6 +1,6 @@
 # --- Query Metadata ---
 # Human-readable name for the query. Will be displayed as the title.
-name: "DNS Staging Detection: ClickFix-Inspired nslookup Execution"
+name: "*Fixed* DNS Staging Detection: ClickFix-Inspired nslookup Execution"
 
 # MITRE ATT&CK technique IDs
 mitre_ids:
@@ -32,21 +32,17 @@ tags:
 # The actual CrowdStrike Query Language (CQL) code.
 # Using the YAML block scalar `|` allows for multi-line strings.
 cql: |
-  // Focus on process creation for nslookup
+  // Start with process execution events for performance
   #event_simpleName = ProcessRollup2
+  // Filter for nslookup.exe
   | ImageFileName = /\\nslookup\.exe$/i
-  // Detect ClickFix patterns: Querying external IPs or specific record types (TXT/ALL)
-  | CommandLine = /nslookup.*?\s+\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/i
-    or CommandLine = /(-q(uerytype)?=)?(txt|all)/i
-  // Target the specific ClickFix piping pattern: filtering for "Name:" and executing
-  | CommandLine = /\|\s*findstr\s*.*Name:/i 
-    or CommandLine = /iex|powershell/i
-  // Filter out standard administrative noise
+  // Look for nslookup querying a non-default server or using specific record types (like TXT)
+  | CommandLine = /nslookup.*(-q|querytype)=(txt|all)/i or CommandLine = /nslookup.* \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/
+  // Exclude common administrative noise if necessary
   | ParentBaseFileName != /services\.exe|monitoring_agent\.exe/i
-  // Aggregate findings
-  | groupBy([ComputerName, UserName, CommandLine, ParentBaseFileName], function=count())
-  | table([ComputerName, UserName, CommandLine, ParentBaseFileName, _count])
-  | sort(_count, order=desc)
+  // Summarize the activity
+  | groupBy([ComputerName, UserName, CommandLine], function=count())
+  | table([ComputerName, UserName, CommandLine, _count])
 
 # Explanation of the query.
 # Using the YAML block scalar `|` allows for multi-line strings.
@@ -61,3 +57,5 @@ explanation: |
   Execution Chain: Monitors for the piping of this output directly into execution engines like PowerShell or IEX.
   
   Evasion Detection: DNS traffic is frequently allowed through corporate firewalls, making this a "lightweight staging channel" that effectively hides data exfiltration and payload delivery in plain sight.
+  
+  To test your query, run nslookup -q=txt google.com 1.1.1.1 in a command prompt. This triggers your detection by requesting a TXT record while bypassing local DNS to use an external IP. Wait a few minutes for the telemetry to ingest, then run your search to confirm the activity appears in your results.
