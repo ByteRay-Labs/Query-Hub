@@ -1,6 +1,6 @@
 # --- Query Metadata ---
 # Human-readable name for the query. Will be displayed as the title.
-name: "*Fixed* DNS Staging Detection: ClickFix-Inspired nslookup Execution"
+name: "DNS Staging Detection: ClickFix-Inspired nslookup Execution"
 
 # MITRE ATT&CK technique IDs
 mitre_ids:
