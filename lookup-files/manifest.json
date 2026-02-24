@@ -6,5 +6,9 @@
   {
     "name": "Generative-AI-Domains.csv",
     "description": "A list of generative AI domains"
+  },
+  {
+    "name": "tor-exit-nodes.csv",
+    "description": "A list IPs of Tor exit nodes"
   }
 ]
