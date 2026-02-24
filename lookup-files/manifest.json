@@ -38,5 +38,13 @@
   {
     "name": "cloudflare-ip-ranges-ipv6.csv",
     "description": "Cloudflare IPv6 IP ranges"
+  },
+  {
+    "name": "fastly-ip-ranges-ipv4.csv",
+    "description": "Fastly IPv4 IP ranges"
+  },
+  {
+    "name": "fastly-ip-ranges-ipv6.csv",
+    "description": "Fastly IPv6 IP ranges"
   }
 ]
