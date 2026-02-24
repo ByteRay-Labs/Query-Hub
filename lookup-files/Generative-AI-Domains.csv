@@ -5,7 +5,6 @@ openai.com,OpenAI
 claude.ai,Anthropic
 anthropic.com,Anthropic
 bard.google.com,Google
-"",
 *.openai.com,OpenAI
 openai.com,OpenAI
 *.anthropic.com,Anthropic
