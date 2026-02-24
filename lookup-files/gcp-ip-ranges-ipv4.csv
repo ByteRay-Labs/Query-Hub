@@ -1,4 +1,4 @@
-ip_prefix,region
+cidr,region
 34.1.208.0/20,africa-south1
 34.35.0.0/16,africa-south1
 34.152.86.0/23,africa-south1

@@ -1,4 +1,4 @@
-ipv6_prefix,region,service,network_border_group
+cidr,region,service,network_border_group
 2406:daf9:a800::/40,ap-southeast-1,AMAZON,ap-southeast-1
 2600:1f01:4900:500::/56,us-east-1,AMAZON,us-east-1
 2600:9000:5206::/48,ap-northeast-2,AMAZON,ap-northeast-2

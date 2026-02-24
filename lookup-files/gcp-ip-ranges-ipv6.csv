@@ -1,4 +1,4 @@
-ipv6_prefix,region
+cidr,region
 2600:1900:8000::/44,africa-south1
 2600:1900:4030::/44,asia-east1
 2600:1900:41a0::/44,asia-east2

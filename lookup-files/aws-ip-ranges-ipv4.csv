@@ -1,4 +1,4 @@
-ip_prefix,region,service,network_border_group
+cidr,region,service,network_border_group
 3.4.12.4/32,eu-west-1,AMAZON,eu-west-1
 3.5.140.0/22,ap-northeast-2,AMAZON,ap-northeast-2
 15.190.244.0/22,ap-east-2,AMAZON,ap-east-2

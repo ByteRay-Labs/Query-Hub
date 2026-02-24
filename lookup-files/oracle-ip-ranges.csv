@@ -1,4 +1,4 @@
-ip_prefix,region
+cidr,region
 40.233.0.0/19,mx-monterrey-1
 139.177.96.0/21,mx-monterrey-1
 157.137.160.0/19,mx-monterrey-1
