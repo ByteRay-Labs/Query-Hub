@@ -9,6 +9,14 @@
   },
   {
     "name": "tor-exit-nodes.csv",
-    "description": "A list IPs of Tor exit nodes"
+    "description": "Tor exit nodes"
+  },
+  {
+    "name": "aws-ip-ranges-ipv6.csv",
+    "description": "AWS IPv6 IP ranges"
+  },
+  {
+    "name": "aws-ip-ranges-ipv4.csv",
+    "description": "AWS IPv4 IP ranges"
   }
 ]
