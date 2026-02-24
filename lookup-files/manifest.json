@@ -26,5 +26,9 @@
   {
     "name": "gcp-ip-ranges-ipv6.csv",
     "description": "Google Cloud IPv6 IP ranges"
+  },
+  {
+    "name": "oracle-ip-ranges.csv",
+    "description": "Oracle Cloud IP ranges"
   }
 ]
