@@ -30,5 +30,13 @@
   {
     "name": "oracle-ip-ranges.csv",
     "description": "Oracle Cloud IP ranges"
+  },
+  {
+    "name": "gcloudflare-ip-ranges-ipv4.csv",
+    "description": "Cloudflare IPv4 IP ranges"
+  },
+  {
+    "name": "cloudflare-ip-ranges-ipv6.csv",
+    "description": "Cloudflare IPv6 IP ranges"
   }
 ]
