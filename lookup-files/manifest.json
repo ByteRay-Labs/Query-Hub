@@ -18,5 +18,13 @@
   {
     "name": "aws-ip-ranges-ipv4.csv",
     "description": "AWS IPv4 IP ranges"
+  },
+  {
+    "name": "gcp-ip-ranges-ipv4.csv",
+    "description": "Google Cloud IPv4 IP ranges"
+  },
+  {
+    "name": "gcp-ip-ranges-ipv6.csv",
+    "description": "Google Cloud IPv6 IP ranges"
   }
 ]
