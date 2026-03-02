@@ -1,0 +1,63 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Remote Port Forwarding via Plink - Unauthorized RDP Tunneling Detection
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1572
+  - T1021.004
+
+# Description of what the query does and its purpose.
+description: |
+  Detects the use of Plink (PuTTY Link) to establish remote port forwarding tunnels, specifically targeting traffic redirected to port 3389 (RDP). This technique is frequently used by threat actors for lateral movement or to bypass firewall restrictions by tunneling RDP over SSH.
+
+# The author or team that created the query.
+author: cap10
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2
+  | ImageFileName=/\\plink(64)?\.exe$/i
+  | CommandLine=/\s-(R|L).*:3389/i
+  | table([aid, ComputerName, UserName, ImageFileName, CommandLine, ParentBaseFileName])
+  | sort(@timestamp, order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  Attackers use `plink.exe` the command-line SSH client from PuTTY to create encrypted SSH tunnels that forward RDP traffic (port 3389) through firewall boundaries. This allows an attacker with an existing foothold to RDP into internal systems even when direct RDP is blocked.
+  
+  ## Forwarding Flags
+  * **-R (Remote Forward):** Attacker binds a port on their server and pulls traffic back to an internal RDP target.
+  * **-L (Local Forward):** Victim machine forwards a local port outbound to an RDP target via the SSH server.
+  
+  ## Why It's Dangerous
+  Because the tunnel rides over SSH (typically port 22 or 443), it blends with legitimate encrypted traffic and often bypasses firewall and DLP controls. The resulting RDP session appears to originate from inside the network.
+  
+  ## Testing the Detection
+  You can safely validate this detection on an enrolled endpoint without establishing an actual tunnel. The connection will fail immediately, but the EDR will still capture the `ProcessRollup2` event.
+  
+  ### 1. Download and Execute (PowerShell)
+  ```powershell
+  Invoke-WebRequest -Uri "[https://the.earth.li/~sgtatham/putty/latest/w64/plink.exe](https://the.earth.li/~sgtatham/putty/latest/w64/plink.exe)" -OutFile "$env:TEMP\plink.exe"
+  
+  # Test -R (remote forward)
+  & "$env:TEMP\plink.exe" -R 4444:localhost:3389 user@192.168.1.1
+  
+  # Test -L (local forward)
+  & "$env:TEMP\plink.exe" -L 4444:localhost:3389 user@192.168.1.1
