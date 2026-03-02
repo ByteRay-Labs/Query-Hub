@@ -29,7 +29,7 @@ tags:
 # Using the YAML block scalar `|` allows for multi-line strings.
 cql: |
   #event_simpleName=DnsRequest event_platform=Win
-  | match(file="AI-Domains.csv", field=[DomainName],column=Domain,ignoreCase=true,mode=glob)
+  | match(file="Generative-AI-Domains.csv", field=[DomainName],column=domain,ignoreCase=true,mode=glob)
   | !in(field=ContextBaseFileName, values=[msedge.exe,chrome.exe],ignoreCase=true)
   | SourceProcess := ContextBaseFileName
   | groupBy([DomainName, ComputerName,SourceProcess],function=count(as=Count))
