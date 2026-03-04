@@ -1,9 +1,5 @@
 [
   {
-    "name": "rmm-tools.csv",
-    "description": "RMM Tools and Domains"
-  },
-  {
     "name": "Generative-AI-Domains.csv",
     "description": "A list of generative AI domains"
   },
