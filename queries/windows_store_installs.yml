@@ -1,0 +1,39 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Windows Store Installs
+
+# Description of what the query does and its purpose.
+description: |
+  This query displays all applications installed from the Microsoft Store on a machine. It extracts the package name from the file path and groups the results by computer name and package base. Also features the ability to filter out known good file paths and packages to reduce noise in the results.
+
+# The author or team that created the query.
+author: Craig Roberts
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Monitoring
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  | regex("WindowsApps\\\\(?<PackageName>[^\\\\]+)\\\\", field=FilePath, strict=true)
+  | regex("^(?<PackageBase>[^_]+)", field=PackageName, strict=false)
+  | ComputerName=~wildcard(?ComputerName, ignoreCase=true)
+  | PackageBase=~wildcard(?PackageBase, ignoreCase=true)
+  // Filter out good filepaths
+  //| !in(field=FilePath, values=[])
+  // Filter out good Packages
+  //| !in(field=PackageBase, values=[])
+  | groupBy([ComputerName, PackageBase])
+  | sort(ComputerName, order=asc, limit=max)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  Takes the filepath and pulls out those files loaded into the \Program Files\WindowsApps directory. Then performs a regex to grab just the package name as it should appear if you did a 'Get-AppxPackage on the machine. Outputs a report using computername and PackageBase
