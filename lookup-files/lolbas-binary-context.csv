@@ -1,0 +1,228 @@
+binary,type,function,link
+AddinUtil.exe,Binaries,Execute (.NetObjects),https://lolbas-project.github.io/lolbas/Binaries/AddinUtil/
+AppInstaller.exe,Binaries,Download (INetCache),https://lolbas-project.github.io/lolbas/Binaries/AppInstaller/
+Aspnet_Compiler.exe,Binaries,AWL bypass,https://lolbas-project.github.io/lolbas/Binaries/Aspnet_Compiler/
+At.exe,Binaries,Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/At/
+Atbroker.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/Atbroker/
+Bash.exe,Binaries,Execute (CMD); AWL bypass (CMD),https://lolbas-project.github.io/lolbas/Binaries/Bash/
+Bitsadmin.exe,Binaries,Alternate data streams; Download; Copy; Execute,https://lolbas-project.github.io/lolbas/Binaries/Bitsadmin/
+CertOC.exe,Binaries,Execute (DLL); Download,https://lolbas-project.github.io/lolbas/Binaries/CertOC/
+CertReq.exe,Binaries,Download; Upload,https://lolbas-project.github.io/lolbas/Binaries/CertReq/
+Certutil.exe,Binaries,Download (GUI); Alternate data streams; Encode; Decode,https://lolbas-project.github.io/lolbas/Binaries/Certutil/
+Change.exe,Binaries,Execute (EXE; Rename),https://lolbas-project.github.io/lolbas/Binaries/Change/
+Cipher.exe,Binaries,Tamper,https://lolbas-project.github.io/lolbas/Binaries/Cipher/
+Cmd.exe,Binaries,Alternate data streams; Download; Upload,https://lolbas-project.github.io/lolbas/Binaries/Cmd/
+Cmdkey.exe,Binaries,Credentials,https://lolbas-project.github.io/lolbas/Binaries/Cmdkey/
+cmdl32.exe,Binaries,Download,https://lolbas-project.github.io/lolbas/Binaries/Cmdl32/
+Cmstp.exe,Binaries,Execute (INF); AWL bypass (INF; Remote),https://lolbas-project.github.io/lolbas/Binaries/Cmstp/
+Colorcpl.exe,Binaries,Copy,https://lolbas-project.github.io/lolbas/Binaries/Colorcpl/
+ComputerDefaults.exe,Binaries,UAC bypass,https://lolbas-project.github.io/lolbas/Binaries/ComputerDefaults/
+ConfigSecurityPolicy.exe,Binaries,Upload; Download (INetCache),https://lolbas-project.github.io/lolbas/Binaries/ConfigSecurityPolicy/
+Conhost.exe,Binaries,Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Conhost/
+Control.exe,Binaries,Alternate data streams (DLL); Execute (DLL),https://lolbas-project.github.io/lolbas/Binaries/Control/
+Csc.exe,Binaries,Compile,https://lolbas-project.github.io/lolbas/Binaries/Csc/
+Cscript.exe,Binaries,Alternate data streams (WSH),https://lolbas-project.github.io/lolbas/Binaries/Cscript/
+CustomShellHost.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/CustomShellHost/
+DataSvcUtil.exe,Binaries,Upload,https://lolbas-project.github.io/lolbas/Binaries/DataSvcUtil/
+Desktopimgdownldr.exe,Binaries,Download,https://lolbas-project.github.io/lolbas/Binaries/Desktopimgdownldr/
+DeviceCredentialDeployment.exe,Binaries,Conceal,https://lolbas-project.github.io/lolbas/Binaries/DeviceCredentialDeployment/
+Dfsvc.exe,Binaries,AWL bypass (ClickOnce; Remote),https://lolbas-project.github.io/lolbas/Binaries/Dfsvc/
+Diantz.exe,Binaries,Alternate data streams (Compression); Download (Compression); Execute (Compression),https://lolbas-project.github.io/lolbas/Binaries/Diantz/
+Diskshadow.exe,Binaries,Dump (CMD); Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Diskshadow/
+Dnscmd.exe,Binaries,Execute (DLL; Remote),https://lolbas-project.github.io/lolbas/Binaries/Dnscmd/
+Esentutl.exe,Binaries,Copy; Alternate data streams; Download,https://lolbas-project.github.io/lolbas/Binaries/Esentutl/
+Eudcedit.exe,Binaries,UAC bypass (CMD; GUI),https://lolbas-project.github.io/lolbas/Binaries/Eudcedit/
+Eventvwr.exe,Binaries,UAC bypass (GUI; EXE; .NetObjects),https://lolbas-project.github.io/lolbas/Binaries/Eventvwr/
+Expand.exe,Binaries,Download; Copy; Alternate data streams,https://lolbas-project.github.io/lolbas/Binaries/Expand/
+Explorer.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/Explorer/
+Extexport.exe,Binaries,Execute (DLL),https://lolbas-project.github.io/lolbas/Binaries/Extexport/
+Extrac32.exe,Binaries,Alternate data streams (Compression); Download; Copy,https://lolbas-project.github.io/lolbas/Binaries/Extrac32/
+Findstr.exe,Binaries,Alternate data streams; Credentials; Download,https://lolbas-project.github.io/lolbas/Binaries/Findstr/
+Finger.exe,Binaries,Download,https://lolbas-project.github.io/lolbas/Binaries/Finger/
+fltMC.exe,Binaries,Tamper,https://lolbas-project.github.io/lolbas/Binaries/FltMC/
+Forfiles.exe,Binaries,Execute (EXE); Alternate data streams (EXE),https://lolbas-project.github.io/lolbas/Binaries/Forfiles/
+Fsutil.exe,Binaries,Tamper; Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/Fsutil/
+Ftp.exe,Binaries,Execute (CMD); Download,https://lolbas-project.github.io/lolbas/Binaries/Ftp/
+Gpscript.exe,Binaries,Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Gpscript/
+Hh.exe,Binaries,Download (EXE; GUI); Execute (EXE; GUI; CMD; CHM; Remote),https://lolbas-project.github.io/lolbas/Binaries/Hh/
+IMEWDBLD.exe,Binaries,Download (INetCache),https://lolbas-project.github.io/lolbas/Binaries/IMEWDBLD/
+Ie4uinit.exe,Binaries,Execute (INF),https://lolbas-project.github.io/lolbas/Binaries/Ie4uinit/
+iediagcmd.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/Iediagcmd/
+Ieexec.exe,Binaries,Download (Remote; EXE (.NET)); Execute (Remote; EXE (.NET)),https://lolbas-project.github.io/lolbas/Binaries/Ieexec/
+Ilasm.exe,Binaries,Compile,https://lolbas-project.github.io/lolbas/Binaries/Ilasm/
+Infdefaultinstall.exe,Binaries,Execute (INF),https://lolbas-project.github.io/lolbas/Binaries/Infdefaultinstall/
+Installutil.exe,Binaries,AWL bypass (DLL (.NET); EXE (.NET)); Execute (DLL (.NET); EXE (.NET)); Download (INetCache),https://lolbas-project.github.io/lolbas/Binaries/Installutil/
+iscsicpl.exe,Binaries,UAC bypass (DLL; CMD; GUI),https://lolbas-project.github.io/lolbas/Binaries/Iscsicpl/
+Jsc.exe,Binaries,Compile (JScript),https://lolbas-project.github.io/lolbas/Binaries/Jsc/
+Ldifde.exe,Binaries,Download,https://lolbas-project.github.io/lolbas/Binaries/Ldifde/
+Makecab.exe,Binaries,Alternate data streams (Compression); Download (Compression); Execute (Compression),https://lolbas-project.github.io/lolbas/Binaries/Makecab/
+Mavinject.exe,Binaries,Execute (DLL); Alternate data streams (DLL),https://lolbas-project.github.io/lolbas/Binaries/Mavinject/
+Microsoft.Workflow.Compiler.exe,Binaries,Execute (VB.Net; Csharp; XOML); AWL bypass (XOML),https://lolbas-project.github.io/lolbas/Binaries/Microsoft.Workflow.Compiler/
+Mmc.exe,Binaries,Execute (COM); UAC bypass (DLL); Download (GUI),https://lolbas-project.github.io/lolbas/Binaries/Mmc/
+MpCmdRun.exe,Binaries,Download; Alternate data streams,https://lolbas-project.github.io/lolbas/Binaries/MpCmdRun/
+Msbuild.exe,Binaries,AWL bypass (CSharp); Execute (CSharp; DLL; XSL; CMD),https://lolbas-project.github.io/lolbas/Binaries/Msbuild/
+Msconfig.exe,Binaries,Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Msconfig/
+Msdt.exe,Binaries,Execute (GUI; MSI); AWL bypass (GUI; MSI; CMD),https://lolbas-project.github.io/lolbas/Binaries/Msdt/
+Msedge.exe,Binaries,Download; Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Msedge/
+Mshta.exe,Binaries,Execute (HTA; Remote; VBScript; JScript); Alternate data streams (HTA); Download (INetCache),https://lolbas-project.github.io/lolbas/Binaries/Mshta/
+Msiexec.exe,Binaries,Execute (MSI; Remote; DLL; MST),https://lolbas-project.github.io/lolbas/Binaries/Msiexec/
+Netsh.exe,Binaries,Execute (DLL),https://lolbas-project.github.io/lolbas/Binaries/Netsh/
+Ngen.exe,Binaries,Download (INetCache),https://lolbas-project.github.io/lolbas/Binaries/Ngen/
+Odbcconf.exe,Binaries,Execute (DLL),https://lolbas-project.github.io/lolbas/Binaries/Odbcconf/
+OfflineScannerShell.exe,Binaries,Execute (DLL),https://lolbas-project.github.io/lolbas/Binaries/OfflineScannerShell/
+OneDriveStandaloneUpdater.exe,Binaries,Download,https://lolbas-project.github.io/lolbas/Binaries/OneDriveStandaloneUpdater/
+Pcalua.exe,Binaries,Execute (EXE; DLL; Remote),https://lolbas-project.github.io/lolbas/Binaries/Pcalua/
+Pcwrun.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/Pcwrun/
+Pktmon.exe,Binaries,Reconnaissance,https://lolbas-project.github.io/lolbas/Binaries/Pktmon/
+Pnputil.exe,Binaries,Execute (INF),https://lolbas-project.github.io/lolbas/Binaries/Pnputil/
+Presentationhost.exe,Binaries,Execute (XBAP); Download (INetCache),https://lolbas-project.github.io/lolbas/Binaries/Presentationhost/
+Print.exe,Binaries,Alternate data streams; Copy,https://lolbas-project.github.io/lolbas/Binaries/Print/
+PrintBrm.exe,Binaries,Download (Compression); Alternate data streams (Compression),https://lolbas-project.github.io/lolbas/Binaries/PrintBrm/
+Provlaunch.exe,Binaries,Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Provlaunch/
+Psr.exe,Binaries,Reconnaissance,https://lolbas-project.github.io/lolbas/Binaries/Psr/
+Query.exe,Binaries,Execute (EXE; Rename),https://lolbas-project.github.io/lolbas/Binaries/Query/
+Rasautou.exe,Binaries,Execute (DLL),https://lolbas-project.github.io/lolbas/Binaries/Rasautou/
+rdrleakdiag.exe,Binaries,Dump,https://lolbas-project.github.io/lolbas/Binaries/Rdrleakdiag/
+Reg.exe,Binaries,Alternate data streams; Credentials,https://lolbas-project.github.io/lolbas/Binaries/Reg/
+Regasm.exe,Binaries,AWL bypass (DLL (.NET)); Execute (DLL (.NET)),https://lolbas-project.github.io/lolbas/Binaries/Regasm/
+Regedit.exe,Binaries,Alternate data streams,https://lolbas-project.github.io/lolbas/Binaries/Regedit/
+Regini.exe,Binaries,Alternate data streams,https://lolbas-project.github.io/lolbas/Binaries/Regini/
+Register-cimprovider.exe,Binaries,Execute (DLL),https://lolbas-project.github.io/lolbas/Binaries/Register-cimprovider/
+Regsvcs.exe,Binaries,Execute (DLL (.NET)); AWL bypass (DLL (.NET)),https://lolbas-project.github.io/lolbas/Binaries/Regsvcs/
+Regsvr32.exe,Binaries,AWL bypass (SCT; Remote); Execute (SCT; Remote; DLL),https://lolbas-project.github.io/lolbas/Binaries/Regsvr32/
+Replace.exe,Binaries,Copy; Download,https://lolbas-project.github.io/lolbas/Binaries/Replace/
+Reset.exe,Binaries,Execute (EXE; Rename),https://lolbas-project.github.io/lolbas/Binaries/Reset/
+Rpcping.exe,Binaries,Credentials,https://lolbas-project.github.io/lolbas/Binaries/Rpcping/
+Rundll32.exe,Binaries,Execute (DLL; Remote; JScript; COM); Alternate data streams (DLL),https://lolbas-project.github.io/lolbas/Binaries/Rundll32/
+Runexehelper.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/Runexehelper/
+Runonce.exe,Binaries,Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Runonce/
+Runscripthelper.exe,Binaries,Execute (PowerShell),https://lolbas-project.github.io/lolbas/Binaries/Runscripthelper/
+Sc.exe,Binaries,Alternate data streams (EXE),https://lolbas-project.github.io/lolbas/Binaries/Sc/
+Schtasks.exe,Binaries,Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Schtasks/
+Scriptrunner.exe,Binaries,Execute (EXE; Remote; CMD),https://lolbas-project.github.io/lolbas/Binaries/Scriptrunner/
+Setres.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/Setres/
+SettingSyncHost.exe,Binaries,Execute (EXE; CMD),https://lolbas-project.github.io/lolbas/Binaries/SettingSyncHost/
+Sftp.exe,Binaries,Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Sftp/
+ssh.exe,Binaries,Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Ssh/
+Stordiag.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/Stordiag/
+SyncAppvPublishingServer.exe,Binaries,Execute (PowerShell),https://lolbas-project.github.io/lolbas/Binaries/SyncAppvPublishingServer/
+Tar.exe,Binaries,Alternate data streams (Compression); Copy (Compression),https://lolbas-project.github.io/lolbas/Binaries/Tar/
+Ttdinject.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/Ttdinject/
+Tttracer.exe,Binaries,Execute (EXE); Dump,https://lolbas-project.github.io/lolbas/Binaries/Tttracer/
+Unregmp2.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/Unregmp2/
+vbc.exe,Binaries,Compile,https://lolbas-project.github.io/lolbas/Binaries/Vbc/
+Verclsid.exe,Binaries,Execute (COM),https://lolbas-project.github.io/lolbas/Binaries/Verclsid/
+Wab.exe,Binaries,Execute (DLL),https://lolbas-project.github.io/lolbas/Binaries/Wab/
+wbadmin.exe,Binaries,Dump,https://lolbas-project.github.io/lolbas/Binaries/Wbadmin/
+wbemtest.exe,Binaries,Execute (GUI; CMD),https://lolbas-project.github.io/lolbas/Binaries/Wbemtest/
+winget.exe,Binaries,Execute (Remote; EXE); Download; AWL bypass,https://lolbas-project.github.io/lolbas/Binaries/Winget/
+Wlrmdr.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/Wlrmdr/
+Wmic.exe,Binaries,Alternate data streams (EXE); Execute (CMD; Remote; XSL); Copy,https://lolbas-project.github.io/lolbas/Binaries/Wmic/
+WorkFolders.exe,Binaries,Execute (EXE),https://lolbas-project.github.io/lolbas/Binaries/WorkFolders/
+Wscript.exe,Binaries,Alternate data streams (WSH),https://lolbas-project.github.io/lolbas/Binaries/Wscript/
+Wsreset.exe,Binaries,UAC bypass,https://lolbas-project.github.io/lolbas/Binaries/Wsreset/
+wuauclt.exe,Binaries,Execute (DLL),https://lolbas-project.github.io/lolbas/Binaries/Wuauclt/
+Xwizard.exe,Binaries,Execute (COM); Download (INetCache),https://lolbas-project.github.io/lolbas/Binaries/Xwizard/
+msedge_proxy.exe,Binaries,Download; Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Msedge_proxy/
+msedgewebview2.exe,Binaries,Execute (EXE; CMD),https://lolbas-project.github.io/lolbas/Binaries/Msedgewebview2/
+wt.exe,Binaries,Execute (CMD),https://lolbas-project.github.io/lolbas/Binaries/Wt/
+Advpack.dll,Libraries,AWL bypass (INF); Execute (DLL; EXE; CMD),https://lolbas-project.github.io/lolbas/Libraries/Advpack/
+Desk.cpl,Libraries,Execute (EXE; Remote),https://lolbas-project.github.io/lolbas/Libraries/Desk/
+Dfshim.dll,Libraries,AWL bypass (ClickOnce; Remote),https://lolbas-project.github.io/lolbas/Libraries/Dfshim/
+Ieadvpack.dll,Libraries,AWL bypass (INF); Execute (DLL; EXE; CMD),https://lolbas-project.github.io/lolbas/Libraries/Ieadvpack/
+Ieframe.dll,Libraries,Execute (URL),https://lolbas-project.github.io/lolbas/Libraries/Ieframe/
+Mshtml.dll,Libraries,Execute (HTA),https://lolbas-project.github.io/lolbas/Libraries/Mshtml/
+Pcwutl.dll,Libraries,Execute (EXE),https://lolbas-project.github.io/lolbas/Libraries/Pcwutl/
+PhotoViewer.dll,Libraries,Download (INetCache),https://lolbas-project.github.io/lolbas/Libraries/PhotoViewer/
+Scrobj.dll,Libraries,Download (INetCache),https://lolbas-project.github.io/lolbas/Libraries/Scrobj/
+Setupapi.dll,Libraries,AWL bypass (INF); Execute (INF),https://lolbas-project.github.io/lolbas/Libraries/Setupapi/
+Shdocvw.dll,Libraries,Execute (URL),https://lolbas-project.github.io/lolbas/Libraries/Shdocvw/
+Shell32.dll,Libraries,Execute (DLL; EXE; CMD),https://lolbas-project.github.io/lolbas/Libraries/Shell32/
+Shimgvw.dll,Libraries,Download (INetCache),https://lolbas-project.github.io/lolbas/Libraries/Shimgvw/
+Syssetup.dll,Libraries,AWL bypass (INF); Execute (INF),https://lolbas-project.github.io/lolbas/Libraries/Syssetup/
+Url.dll,Libraries,Execute (HTA; URL; EXE),https://lolbas-project.github.io/lolbas/Libraries/Url/
+Zipfldr.dll,Libraries,Execute (EXE),https://lolbas-project.github.io/lolbas/Libraries/Zipfldr/
+Comsvcs.dll,Libraries,Dump,https://lolbas-project.github.io/lolbas/Libraries/Comsvcs/
+AccCheckConsole.exe,OtherMSBinaries,Execute (DLL (.NET)); AWL bypass (DLL (.NET)),https://lolbas-project.github.io/lolbas/OtherMSBinaries/AccCheckConsole/
+adplus.exe,OtherMSBinaries,Dump; Execute (CMD; EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Adplus/
+AgentExecutor.exe,OtherMSBinaries,Execute (PowerShell; EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/AgentExecutor/
+AppLauncher.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/AppLauncher/
+AppCert.exe,OtherMSBinaries,Execute (EXE; MSI),https://lolbas-project.github.io/lolbas/OtherMSBinaries/AppCert/
+Appvlp.exe,OtherMSBinaries,Execute (CMD; EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Appvlp/
+Bcp.exe,OtherMSBinaries,Download,https://lolbas-project.github.io/lolbas/OtherMSBinaries/Bcp/
+Bginfo.exe,OtherMSBinaries,Execute (WSH; Remote); AWL bypass (WSH; Remote),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Bginfo/
+Cdb.exe,OtherMSBinaries,Execute (Shellcode; CMD),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Cdb/
+coregen.exe,OtherMSBinaries,Execute (DLL); AWL bypass (DLL),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Coregen/
+Createdump.exe,OtherMSBinaries,Dump,https://lolbas-project.github.io/lolbas/OtherMSBinaries/Createdump/
+csi.exe,OtherMSBinaries,Execute (CSharp),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Csi/
+DefaultPack.EXE,OtherMSBinaries,Execute (CMD),https://lolbas-project.github.io/lolbas/OtherMSBinaries/DefaultPack/
+Devinit.exe,OtherMSBinaries,Execute (MSI; Remote),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Devinit/
+Devtoolslauncher.exe,OtherMSBinaries,Execute (CMD),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Devtoolslauncher/
+dnx.exe,OtherMSBinaries,Execute (CSharp),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Dnx/
+Dotnet.exe,OtherMSBinaries,AWL bypass (DLL (.NET); CSharp); Execute (DLL (.NET); FSharp),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Dotnet/
+dsdbutil.exe,OtherMSBinaries,Dump,https://lolbas-project.github.io/lolbas/OtherMSBinaries/Dsdbutil/
+dtutil.exe,OtherMSBinaries,Copy,https://lolbas-project.github.io/lolbas/OtherMSBinaries/Dtutil/
+Dump64.exe,OtherMSBinaries,Dump,https://lolbas-project.github.io/lolbas/OtherMSBinaries/Dump64/
+DumpMinitool.exe,OtherMSBinaries,Dump,https://lolbas-project.github.io/lolbas/OtherMSBinaries/DumpMinitool/
+Dxcap.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Dxcap/
+ECMangen.exe,OtherMSBinaries,Download (INetCache),https://lolbas-project.github.io/lolbas/OtherMSBinaries/ECMangen/
+Excel.exe,OtherMSBinaries,Download (INetCache),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Excel/
+Fsi.exe,OtherMSBinaries,AWL bypass (FSharp),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Fsi/
+FsiAnyCpu.exe,OtherMSBinaries,AWL bypass (FSharp),https://lolbas-project.github.io/lolbas/OtherMSBinaries/FsiAnyCpu/
+IntelliTrace.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/IntelliTrace/
+Mftrace.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Mftrace/
+Microsoft.NodejsTools.PressAnyKey.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Microsoft.NodejsTools.PressAnyKey/
+Mpiexec.exe,OtherMSBinaries,Execute (CMD),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Mpiexec/
+MSAccess.exe,OtherMSBinaries,Download (INetCache),https://lolbas-project.github.io/lolbas/OtherMSBinaries/MSAccess/
+Msdeploy.exe,OtherMSBinaries,Execute (CMD); AWL bypass (CMD); Copy,https://lolbas-project.github.io/lolbas/OtherMSBinaries/Msdeploy/
+MsoHtmEd.exe,OtherMSBinaries,Download (INetCache),https://lolbas-project.github.io/lolbas/OtherMSBinaries/MsoHtmEd/
+Mspub.exe,OtherMSBinaries,Download (INetCache),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Mspub/
+msxsl.exe,OtherMSBinaries,Execute (XSL; Remote); AWL bypass (XSL; Remote); Download; Alternate data streams,https://lolbas-project.github.io/lolbas/OtherMSBinaries/Msxsl/
+ntdsutil.exe,OtherMSBinaries,Dump,https://lolbas-project.github.io/lolbas/OtherMSBinaries/Ntdsutil/
+Ntsd.exe,OtherMSBinaries,Execute (CMD),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Ntsd/
+OpenConsole.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/OpenConsole/
+Pixtool.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Pixtool/
+Powerpnt.exe,OtherMSBinaries,Download (INetCache),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Powerpnt/
+Procdump.exe,OtherMSBinaries,Execute (DLL),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Procdump/
+ProtocolHandler.exe,OtherMSBinaries,Download,https://lolbas-project.github.io/lolbas/OtherMSBinaries/ProtocolHandler/
+rcsi.exe,OtherMSBinaries,Execute (CSharp); AWL bypass (CSharp),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Rcsi/
+Remote.exe,OtherMSBinaries,AWL bypass (EXE); Execute (EXE; Remote),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Remote/
+Sqldumper.exe,OtherMSBinaries,Dump,https://lolbas-project.github.io/lolbas/OtherMSBinaries/Sqldumper/
+Sqlps.exe,OtherMSBinaries,Execute (PowerShell),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Sqlps/
+SQLToolsPS.exe,OtherMSBinaries,Execute (PowerShell),https://lolbas-project.github.io/lolbas/OtherMSBinaries/SQLToolsPS/
+Squirrel.exe,OtherMSBinaries,Download; AWL bypass (Nuget; Remote); Execute (Nuget; Remote),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Squirrel/
+te.exe,OtherMSBinaries,Execute (WSH; DLL; Custom Format),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Te/
+Teams.exe,OtherMSBinaries,Execute (Node.JS; CMD),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Teams/
+TestWindowRemoteAgent.exe,OtherMSBinaries,Upload,https://lolbas-project.github.io/lolbas/OtherMSBinaries/TestWindowRemoteAgent/
+Tracker.exe,OtherMSBinaries,Execute (DLL); AWL bypass (DLL),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Tracker/
+Update.exe,OtherMSBinaries,Download; AWL bypass (Nuget; Remote; CMD); Execute (Nuget; Remote; CMD; EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Update/
+VSDiagnostics.exe,OtherMSBinaries,Execute (EXE; CMD),https://lolbas-project.github.io/lolbas/OtherMSBinaries/VSDiagnostics/
+VSIISExeLauncher.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/VSIISExeLauncher/
+Visio.exe,OtherMSBinaries,Download (INetCache),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Visio/
+VisualUiaVerifyNative.exe,OtherMSBinaries,AWL bypass (.NetObjects),https://lolbas-project.github.io/lolbas/OtherMSBinaries/VisualUiaVerifyNative/
+VSLaunchBrowser.exe,OtherMSBinaries,Download (INetCache); Execute (EXE; Remote),https://lolbas-project.github.io/lolbas/OtherMSBinaries/VSLaunchBrowser/
+Vshadow.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Vshadow/
+vsjitdebugger.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Vsjitdebugger/
+WFMFormat.exe,OtherMSBinaries,Execute (EXE; .NET Framework 3.5),https://lolbas-project.github.io/lolbas/OtherMSBinaries/WFMFormat/
+Wfc.exe,OtherMSBinaries,AWL bypass (XOML),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Wfc/
+WinDbg.exe,OtherMSBinaries,Execute (CMD),https://lolbas-project.github.io/lolbas/OtherMSBinaries/WinDbg/
+WinProj.exe,OtherMSBinaries,Download (INetCache),https://lolbas-project.github.io/lolbas/OtherMSBinaries/WinProj/
+Winword.exe,OtherMSBinaries,Download (INetCache),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Winword/
+Wsl.exe,OtherMSBinaries,Execute (EXE; CMD); Download,https://lolbas-project.github.io/lolbas/OtherMSBinaries/Wsl/
+XBootMgr.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/XBootMgr/
+XBootMgrSleep.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/XBootMgrSleep/
+devtunnel.exe,OtherMSBinaries,Download,https://lolbas-project.github.io/lolbas/OtherMSBinaries/Devtunnel/
+vsls-agent.exe,OtherMSBinaries,Execute (DLL),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Vsls-agent/
+vstest.console.exe,OtherMSBinaries,AWL bypass (DLL),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Vstest.console/
+winfile.exe,OtherMSBinaries,Execute (EXE),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Winfile/
+xsd.exe,OtherMSBinaries,Download (INetCache),https://lolbas-project.github.io/lolbas/OtherMSBinaries/Xsd/
+CL_LoadAssembly.ps1,Scripts,Execute (DLL (.NET)),https://lolbas-project.github.io/lolbas/Scripts/CL_LoadAssembly/
+CL_Mutexverifiers.ps1,Scripts,Execute (PowerShell),https://lolbas-project.github.io/lolbas/Scripts/CL_Mutexverifiers/
+CL_Invocation.ps1,Scripts,Execute (CMD),https://lolbas-project.github.io/lolbas/Scripts/CL_Invocation/
+Launch-VsDevShell.ps1,Scripts,Execute (EXE),https://lolbas-project.github.io/lolbas/Scripts/Launch-VsDevShell/
+Manage-bde.wsf,Scripts,Execute (EXE),https://lolbas-project.github.io/lolbas/Scripts/Manage-bde/
+Pubprn.vbs,Scripts,Execute (SCT),https://lolbas-project.github.io/lolbas/Scripts/Pubprn/
+Syncappvpublishingserver.vbs,Scripts,Execute (PowerShell),https://lolbas-project.github.io/lolbas/Scripts/Syncappvpublishingserver/
+UtilityFunctions.ps1,Scripts,Execute (DLL (.NET)),https://lolbas-project.github.io/lolbas/Scripts/UtilityFunctions/
+winrm.vbs,Scripts,Execute (CMD; Remote); AWL bypass (XSL),https://lolbas-project.github.io/lolbas/Scripts/Winrm/
+Pester.bat,Scripts,Execute (EXE),https://lolbas-project.github.io/lolbas/Scripts/Pester/
