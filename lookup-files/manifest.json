@@ -42,5 +42,9 @@
   {
     "name": "fastly-ip-ranges-ipv6.csv",
     "description": "Fastly IPv6 IP ranges"
+  },
+  {
+    "name": "lolbas-binary-context.csv",
+    "description": "Serves as a mapping reference for the LOLBAS project (lolbas-project.github.io)."
   }
 ]
