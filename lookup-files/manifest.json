@@ -46,5 +46,9 @@
   {
     "name": "lolbas-binary-context.csv",
     "description": "Serves as a mapping reference for the LOLBAS project (lolbas-project.github.io)."
+  },
+  {
+    "name": "generic-usernames.csv",
+    "description": "This lookup file contains generic accounts that violate individual accountability requirements mandated by frameworks like ISO 27001 and SOC2."
   }
 ]

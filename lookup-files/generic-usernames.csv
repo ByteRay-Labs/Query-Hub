@@ -1,0 +1,353 @@
+username,type
+2wire,Network/Hardware
+3com,Network/Hardware
+911,General Generic
+abuse,Departmental/Support
+accounting,General Generic
+actiontec,Network/Hardware
+activemq,Application/Database
+adm,Administrative
+admin,Administrative
+admin-user,Administrative
+admin1,Administrative
+admin123,Administrative
+admin2,Administrative
+administrator,Administrative
+administrator1,Administrative
+agent,User/Guest
+agentuser,User/Guest
+airflow,Application/Database
+airlink,Network/Hardware
+airlive,Network/Hardware
+airties,Network/Hardware
+ampedwireless,Network/Hardware
+analytics,General Generic
+anon,User/Guest
+anonymous,User/Guest
+anonymousftp,Application/Database
+ansible,Application/Database
+apache,Application/Database
+app,General Generic
+application,General Generic
+appuser,User/Guest
+arris,Network/Hardware
+asus,Network/Hardware
+audit,Departmental/Support
+auditor,Departmental/Support
+automation,Development/Test
+awsadmin,Administrative
+aztech,Network/Hardware
+azureadmin,Administrative
+azureuser,Cloud/OS
+backup,System/Service
+backupadmin,Administrative
+belkin,Network/Hardware
+benq,Network/Hardware
+billing,Departmental/Support
+bin,System/Service
+bitbucket,Application/Database
+bitnami,Cloud/OS
+blabla,Development/Test
+blender,General Generic
+boss,Administrative
+bot,Development/Test
+brightmail,Departmental/Support
+broadband,Application/Database
+buffalo,Network/Hardware
+build,Development/Test
+builtin,System/Service
+camera,Network/Hardware
+cassandra,Application/Database
+cc,General Generic
+cctv,General Generic
+cd,Development/Test
+centos,Cloud/OS
+central,General Generic
+ceo,General Generic
+ceph,Application/Database
+cfo,General Generic
+cgadmin,Administrative
+change_on_install,General Generic
+changeit,Departmental/Support
+changeme,General Generic
+changethis,General Generic
+chef,Application/Database
+ci,Development/Test
+cisco,Network/Hardware
+client,User/Guest
+cloud,General Generic
+cloud-user,Cloud/OS
+cloudadmin,Administrative
+cms,General Generic
+comcast,Network/Hardware
+compliance,Departmental/Support
+confluence,Application/Database
+connect,General Generic
+console,System/Service
+container,Application/Database
+control,System/Service
+core,General Generic
+coreos,Cloud/OS
+crash,General Generic
+cto,General Generic
+d-link,Network/Hardware
+daemon,System/Service
+database,Application/Database
+db,Application/Database
+db-admin,Application/Database
+db2,Application/Database
+dbadmin,Application/Database
+dbuser,Application/Database
+debian,Cloud/OS
+default,System/Service
+dell,Network/Hardware
+demo,Development/Test
+demo1,Development/Test
+desk,Departmental/Support
+dev,Development/Test
+dev1,Development/Test
+developer,Development/Test
+development,Development/Test
+device,Development/Test
+dockeradmin,Application/Database
+docker,Application/Database
+domainadmin,Administrative
+domainadministrator,Administrative
+drupal,Application/Database
+ec2-user,Cloud/OS
+elastic,Application/Database
+elasticsearch,Application/Database
+endpoint,User/Guest
+engineer,Departmental/Support
+enterpriseadmin,Administrative
+example,Development/Test
+exchange,General Generic
+fedora,Cloud/OS
+fileserver,General Generic
+fileshare,General Generic
+finance,General Generic
+firewall,Network/Hardware
+ftp,Application/Database
+ftpuser,Application/Database
+fwadmin,Network/Hardware
+gcpadmin,Administrative
+ghost,Application/Database
+gigabyte,Network/Hardware
+git,Application/Database
+github,Application/Database
+gitlab,Application/Database
+grafana,General Generic
+guest,User/Guest
+guestuser,User/Guest
+hadoop,Application/Database
+help-admin,Administrative
+helpassistant,General Generic
+helpdesk,Departmental/Support
+hostmaster,Administrative
+hr,Departmental/Support
+http,Application/Database
+httpd,Application/Database
+huawei,Network/Hardware
+iis,Application/Database
+infra,General Generic
+infrastructure,General Generic
+internal,General Generic
+iot,General Generic
+ips,General Generic
+irc,System/Service
+it,Departmental/Support
+it-support,Departmental/Support
+itadmin,Administrative
+jenkins,Application/Database
+jira,Application/Database
+jobs,Departmental/Support
+k8s,Application/Database
+kafka,Application/Database
+kibana,Application/Database
+kube,Application/Database
+kubernetes,Application/Database
+lab,Development/Test
+labuser,Development/Test
+legal,Departmental/Support
+linksys,Network/Hardware
+localadmin,Administrative
+log,System/Service
+logger,System/Service
+logging,System/Service
+logstash,Application/Database
+machine,System/Service
+machineaccount,System/Service
+mail,Departmental/Support
+mailadmin,Administrative
+maint,General Generic
+maintenance,Departmental/Support
+management,General Generic
+manager,Administrative
+manager-admin,Administrative
+mariadb,Application/Database
+marketing,Departmental/Support
+master,Administrative
+masteruser,Administrative
+microsoft,General Generic
+mongodb,Application/Database
+monitor,Departmental/Support
+monitoring,Departmental/Support
+msi,General Generic
+mssql,Application/Database
+mysql,Application/Database
+mysqladmin,Application/Database
+nagios,General Generic
+neo4j,Application/Database
+netgear,Network/Hardware
+network-admin,Administrative
+nginx,Application/Database
+noaccess,System/Service
+nobody,System/Service
+noc,Departmental/Support
+node,Application/Database
+nodejs,Application/Database
+observer,General Generic
+openstack,Cloud/OS
+operations,General Generic
+operator,Administrative
+operator1,Administrative
+operator2,Administrative
+ops,General Generic
+oracle,Application/Database
+oracleadmin,Application/Database
+owner,Administrative
+payroll,General Generic
+php,Application/Database
+pi,Cloud/OS
+postgres,Application/Database
+postgresql,Application/Database
+postmaster,Administrative
+power,Administrative
+power-admin,Administrative
+poweruser,Administrative
+powerusers,Administrative
+print,General Generic
+printer,Network/Hardware
+privacy,Departmental/Support
+prod,General Generic
+production,General Generic
+prometheus,General Generic
+protector,General Generic
+proxy,Network/Hardware
+proxyuser,Network/Hardware
+public,System/Service
+puppet,Application/Database
+qa,Development/Test
+qa1,Development/Test
+rabbitmq,Application/Database
+radius,Network/Hardware
+rancher,Cloud/OS
+rdp,User/Guest
+rdpuser,User/Guest
+read,General Generic
+reader,General Generic
+readonly,General Generic
+recovery,System/Service
+recoveryadmin,Administrative
+redhat,Cloud/OS
+redis,Application/Database
+registry,Application/Database
+remote,User/Guest
+remoteuser,User/Guest
+report,General Generic
+reporting,General Generic
+restore,System/Service
+robot,Development/Test
+root,Administrative
+root-admin,Administrative
+root1,Administrative
+root2,Administrative
+sa,Administrative
+sales,Administrative
+salt,Application/Database
+sample,Administrative
+sandbox,Application/Database
+sap,Application/Database
+scan,System/Service
+scanner,System/Service
+sec,General Generic
+security,Departmental/Support
+security-admin,Administrative
+sensor,General Generic
+sentinel,General Generic
+service,System/Service
+serviceaccount,System/Service
+services,System/Service
+sharepoint,General Generic
+sharing,General Generic
+siemens,Application/Database
+site-admin,Administrative
+soc,Departmental/Support
+sql,Application/Database
+sqladmin,Application/Database
+sqluser,Application/Database
+ssh,User/Guest
+sshuser,User/Guest
+staff,General Generic
+stage,Development/Test
+staging,Development/Test
+standard,User/Guest
+standarduser,User/Guest
+storage,General Generic
+storageadmin,Administrative
+super,Administrative
+super-admin,Administrative
+superadmin,Administrative
+superset,Application/Database
+superuser,Administrative
+supervisor,Administrative
+support,Departmental/Support
+svc,System/Service
+svc_account,System/Service
+svc_admin,Administrative
+sync,System/Service
+synology,Network/Hardware
+sys,Administrative
+sys1,Administrative
+sys2,Administrative
+sysadmin,Administrative
+system,Administrative
+system-admin,Administrative
+tech,Departmental/Support
+tech-admin,Administrative
+technician,Development/Test
+temp,Development/Test
+temp1,Development/Test
+temporary,Development/Test
+tenantadmin,Administrative
+terminal,User/Guest
+test,Development/Test
+test1,Development/Test
+test2,Development/Test
+testing,Development/Test
+tomcat,Application/Database
+training,General Generic
+trial,Development/Test
+ubuntu,Cloud/OS
+ubuntuuser,Cloud/OS
+user,User/Guest
+user1,User/Guest
+user123,User/Guest
+user2,User/Guest
+vault,Application/Database
+visitor,Departmental/Support
+vpn,Network/Hardware
+vpnadmin,Network/Hardware
+vpnuser,Network/Hardware
+web,General Generic
+web-admin,Administrative
+webmaster,Administrative
+wifi,Network/Hardware
+wlan,Network/Hardware
+wp-admin,Application/Database
+wp-user,Application/Database
+write,Departmental/Support
+writer,Departmental/Support
+www,Application/Database
+www-data,Application/Database
+zyxel,Network/Hardware
