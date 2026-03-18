@@ -98,6 +98,7 @@ db-admin,Application/Database
 db2,Application/Database
 dbadmin,Application/Database
 dbuser,Application/Database
+ddic,Application/Database
 debian,Cloud/OS
 default,System/Service
 dell,Network/Hardware
@@ -114,6 +115,7 @@ docker,Application/Database
 domainadmin,Administrative
 domainadministrator,Administrative
 drupal,Application/Database
+earlywatch,Application/Database
 ec2-user,Cloud/OS
 elastic,Application/Database
 elasticsearch,Application/Database
@@ -268,6 +270,7 @@ salt,Application/Database
 sample,Administrative
 sandbox,Application/Database
 sap,Application/Database
+sapcpic,Application/Database
 scan,System/Service
 scanner,System/Service
 sec,General Generic
@@ -325,6 +328,7 @@ test,Development/Test
 test1,Development/Test
 test2,Development/Test
 testing,Development/Test
+tmsadm,Application/Database
 tomcat,Application/Database
 training,General Generic
 trial,Development/Test
