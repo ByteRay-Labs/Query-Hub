@@ -1,0 +1,51 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Detection of Generic User Account Usage
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1078
+
+# Description of what the query does and its purpose.
+# Using the YAML block scalar `|` allows for multi-line strings.
+description: |
+  This query identifies the use of generic or shared user accounts by leveraging a predefined lookup file containing known default and non-personalized usernames (e.g., admin, test, root).
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  "#event_simpleName" = UserLogon | user.name := lower("user.name") | groupBy(user.name,ComputerName) | match(file="generic-usernames.csv", field=[user.name], column=[username])
+  | table([user.name, ComputerName, _count])
+  | User := rename(user.name)
+  | Host := rename(ComputerName)
+  | LogonCount := rename(_count)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  | Framework     | Primary Reason                     | Specific Source / Control            |
+  |---------------|----------------------------------|-------------------------------------|
+  | PCI DSS       | Individual Accountability         | Requirement 8.2.1                   |
+  | HIPAA         | Traceability of PHI Access        | 45 CFR § 164.312(a)(2)(i)           |
+  | ISO 27001     | Privileged Access Control         | Annex A 5.15 / 8.2                  |
+  | NIST 800-53   | Risk Management                  | AC-2(9)                             |
+  | SOC 2         | Auditability                      | CC6.1                               |
