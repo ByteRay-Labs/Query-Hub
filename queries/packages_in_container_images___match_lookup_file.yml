@@ -33,7 +33,7 @@ cql: |
   | array:drop("CVEMapping[]")
   | array:dedup("PackageName[]")
   | array:reduceAll(array="PackageName[]",var=PackageName, function=groupBy(PackageName))
-  | match(file="compromised_npm_packages.csv", field="PackageName",column="PackageName", ignoreCase=true)
+  | match(file="compromised-npm-packages-shai-hulud.csv", field="PackageName",column="PackageName", ignoreCase=true)
 
 # Explanation of the query.
 # Using the YAML block scalar `|` allows for multi-line strings.
