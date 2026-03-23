@@ -5,13 +5,14 @@ name: "LeakNet Campaign: Deno Runtime & Klist Suspicious Execution Detection"
 # MITRE ATT&CK technique IDs
 mitre_ids:
   - T1204.001
-  - T1059.007
-  - T1059.001
-  - T1558.003
-  - T1082
-  - T1033
-  - T1016
-  - T1087
+  - T1059
+  #- T1059.007
+  #- T1059.001
+  #- T1558.003
+  #- T1082
+  #- T1033
+  #- T1016
+  #- T1087
 
 # Description of what the query does and its purpose.
 description: |
@@ -33,106 +34,6 @@ tags:
 # The actual CrowdStrike Query Language (CQL) code.
 # Using the YAML block scalar `|` allows for multi-line strings.
 cql: |
-  //══════════════════════════════════════════════════════════════════════════════════════════════════
-  // HUNT: Deno Runtime & Klist - Suspicious Execution and Lateral Movement Detection
-  //══════════════════════════════════════════════════════════════════════════════════════════════════
-  //
-  // Version: 1.1
-  // Author: Cybersecurity Operations
-  // Last Updated: 2026-03-18
-  //
-  // DESCRIPTION:
-  // Detects indicators of the LeakNet campaign (analyzed by ReliaQuest, March 2026),
-  // which uses ClickFix — a social engineering tactic where compromised websites display
-  // fake error dialogs, coercing users to manually paste and execute a malicious
-  // PowerShell/CMD command. This delivers a staged Deno (JavaScript runtime) binary that
-  // runs malicious payloads entirely in memory, avoiding disk-based detection.
-  //
-  // This query targets the post-delivery kill chain: Deno execution from user-writable
-  // directories, klist usage from interactive shells (indicating Kerberos ticket
-  // harvesting), Deno spawning reconnaissance or administrative tools, and dangerous
-  // runtime flags or remote code fetch patterns in Deno's command line.
-  //
-  // CAMPAIGN DETAILS:
-  // Campaign: LeakNet
-  // Reference: ReliaQuest Threat Research, March 2026
-  // Delivery: ClickFix social engineering → user-pasted PowerShell/CMD command
-  // Payload: Portable Deno binary dropped to AppData/Temp
-  // Execution: In-memory JavaScript payloads via Deno runtime
-  // Post-Exploitation: Credential enumeration (klist), host discovery, C2 callbacks
-  //
-  // VULNERABILITY DETAILS:
-  // CVE: N/A (Campaign-Specific TTPs / Living off the Land)
-  // Type: Initial Access, Execution, Credential Access, Discovery, Lateral Movement
-  // Status: ACTIVE CAMPAIGN — MONITORING FOR ANOMALOUS USAGE
-  //
-  // MITRE ATT&CK MAPPING:
-  //   T1204.001 - User Execution: Malicious Link (ClickFix)
-  //   T1059.007 - Command and Scripting Interpreter: JavaScript/TypeScript
-  //   T1059.001 - Command and Scripting Interpreter: PowerShell
-  //   T1558.003 - Steal or Forge Kerberos Tickets: Kerberoasting
-  //   T1082     - System Information Discovery
-  //   T1033     - System Owner/User Discovery
-  //   T1016     - System Network Configuration Discovery
-  //   T1087     - Account Discovery
-  //   Tactics: Initial Access, Execution, Credential Access, Discovery, Lateral Movement
-  //
-  // EXPLOITATION REQUIREMENTS:
-  // - User interaction required (ClickFix paste-and-execute social engineering)
-  // - Deno binary present on disk (often portable/non-installed)
-  // - Execution within user-writable context (AppData/Temp)
-  // - Network access for remote script fetching (--allow-net)
-  //
-  // USE CASES:
-  // - Detect Deno-based malware or C2 stagers
-  // - Identify Kerberos ticket enumeration via klist.exe
-  // - Track post-exploitation discovery commands spawned by script runtimes
-  // - Flag dangerous Deno permission flags and remote code execution patterns
-  //
-  // DATA SOURCE:
-  //   Event Type: ProcessRollup2
-  //   Required Fields: ImageFileName, CommandLine, ComputerName, UserName, ParentBaseFileName
-  //   Sensor: CrowdStrike Falcon EDR
-  //
-  // AFFECTED SYSTEMS:
-  // - Windows 10/11
-  // - Windows Server 2016/2019/2022
-  //
-  // FALSE POSITIVES:
-  // - Legitimate developer activity (Deno used in IDE/Repos)
-  // - Automated IT scripts using klist for troubleshooting
-  // - Deno-based internal tools running from standard Program Files paths
-  // - DevOps pipelines that invoke Deno with --allow-net against internal registries
-  //
-  // INVESTIGATION NOTES:
-  // 1. Check if the Deno binary is signed and from a known developer location.
-  // 2. Review the CommandLine for --allow-all or remote URLs (http/https).
-  // 3. Correlate klist usage with recent logins or network connections to Domain Controllers.
-  // 4. Inspect the parent process of klist.exe; interactive shells are higher risk.
-  // 5. Verify if the user is a known developer or DevOps engineer.
-  // 6. Cross-reference SHA256HashData against known-good Deno release hashes.
-  //
-  // TUNING RECOMMENDATIONS:
-  // - Add specific exclusion for local 'dev' or 'git' directories.
-  // - Filter out known-good service accounts that use klist for health checks.
-  // - Baseline Deno usage by SHA256 if a standard version is deployed.
-  // - Add UserName exclusions for known developer accounts if discovery clause is noisy.
-  //
-  // REMEDIATION:
-  // Priority: MEDIUM (Context Dependent)
-  // Action: Quarantine suspicious Deno binaries found in AppData/Temp.
-  // Patches: Ensure Deno is updated to the latest version to prevent engine exploits.
-  //
-  // QUERY LOGIC:
-  // 1. Filters for ProcessRollup2 events.
-  // 2. Checks for Deno in writable paths (Local/Roaming/Temp/ProgramData).
-  // 3. Flags klist.exe when spawned by common shells or script hosts.
-  // 4. Monitors Deno spawning living-off-the-land and discovery binaries.
-  // 5. Identifies dangerous Deno flags or remote fetch commands in the command line.
-  // 6. Applies a global noise reduction for standard Program Files or developer paths.
-  //
-  //══════════════════════════════════════════════════════════════════════════════════════════════════
-  
   #event_simpleName=ProcessRollup2
   | (
       /* ── Clause 1: Deno launched from user-writable locations ── */
@@ -225,3 +126,81 @@ explanation: |
   This query detects post-exploitation activity associated with the LeakNet campaign, which was publicly analyzed by ReliaQuest in March 2026. LeakNet uses ClickFix — a social engineering technique where compromised websites present fake browser or application error dialogs that instruct users to copy a malicious command and paste it into a Run dialog or terminal. The pasted command downloads and executes a portable Deno binary, which then runs JavaScript payloads entirely in memory to evade traditional file-based detection.
   
   The query monitors CrowdStrike Falcon EDR `ProcessRollup2` telemetry and applies four detection clauses covering distinct stages of the LeakNet kill chain, followed by a noise reduction filter.
+  
+  CAMPAIGN DETAILS:
+  Campaign: LeakNet
+  Reference: ReliaQuest Threat Research, March 2026
+  Delivery: ClickFix social engineering → user-pasted PowerShell/CMD command
+  Payload: Portable Deno binary dropped to AppData/Temp
+  Execution: In-memory JavaScript payloads via Deno runtime
+  Post-Exploitation: Credential enumeration (klist), host discovery, C2 callbacks
+  
+  VULNERABILITY DETAILS:
+  CVE: N/A (Campaign-Specific TTPs / Living off the Land)
+  Type: Initial Access, Execution, Credential Access, Discovery, Lateral Movement
+  Status: ACTIVE CAMPAIGN — MONITORING FOR ANOMALOUS USAGE
+  
+  MITRE ATT&CK MAPPING:
+  T1204.001 - User Execution: Malicious Link (ClickFix)
+  T1059.007 - Command and Scripting Interpreter: JavaScript/TypeScript
+  T1059.001 - Command and Scripting Interpreter: PowerShell
+  T1558.003 - Steal or Forge Kerberos Tickets: Kerberoasting
+  T1082     - System Information Discovery
+  T1033     - System Owner/User Discovery
+  T1016     - System Network Configuration Discovery
+  T1087     - Account Discovery
+  Tactics: Initial Access, Execution, Credential Access, Discovery, Lateral Movement
+  
+  EXPLOITATION REQUIREMENTS:
+  - User interaction required (ClickFix paste-and-execute social engineering)
+  - Deno binary present on disk (often portable/non-installed)
+  - Execution within user-writable context (AppData/Temp)
+  - Network access for remote script fetching (--allow-net)
+  
+  USE CASES:
+  - Detect Deno-based malware or C2 stagers
+  - Identify Kerberos ticket enumeration via klist.exe
+  - Track post-exploitation discovery commands spawned by script runtimes
+  - Flag dangerous Deno permission flags and remote code execution patterns
+  
+  DATA SOURCE:
+  Event Type: ProcessRollup2
+  Required Fields: ImageFileName, CommandLine, ComputerName, UserName, ParentBaseFileName
+  Sensor: CrowdStrike Falcon EDR
+  
+  AFFECTED SYSTEMS:
+  - Windows 10/11
+  - Windows Server 2016/2019/2022
+  
+  FALSE POSITIVES:
+  - Legitimate developer activity (Deno used in IDE/Repos)
+  - Automated IT scripts using klist for troubleshooting
+  - Deno-based internal tools running from standard Program Files paths
+  - DevOps pipelines that invoke Deno with --allow-net against internal registries
+  
+  INVESTIGATION NOTES:
+  1. Check if the Deno binary is signed and from a known developer location.
+  2. Review the CommandLine for --allow-all or remote URLs (http/https).
+  3. Correlate klist usage with recent logins or network connections to Domain Controllers.
+  4. Inspect the parent process of klist.exe; interactive shells are higher risk.
+  5. Verify if the user is a known developer or DevOps engineer.
+  6. Cross-reference SHA256HashData against known-good Deno release hashes.
+  
+  TUNING RECOMMENDATIONS:
+  - Add specific exclusion for local 'dev' or 'git' directories.
+  - Filter out known-good service accounts that use klist for health checks.
+  - Baseline Deno usage by SHA256 if a standard version is deployed.
+  - Add UserName exclusions for known developer accounts if discovery clause is noisy.
+  
+  REMEDIATION:
+  Priority: MEDIUM (Context Dependent)
+  Action: Quarantine suspicious Deno binaries found in AppData/Temp.
+  Patches: Ensure Deno is updated to the latest version to prevent engine exploits.
+  
+  QUERY LOGIC:
+  1. Filters for ProcessRollup2 events.
+  2. Checks for Deno in writable paths (Local/Roaming/Temp/ProgramData).
+  3. Flags klist.exe when spawned by common shells or script hosts.
+  4. Monitors Deno spawning living-off-the-land and discovery binaries.
+  5. Identifies dangerous Deno flags or remote fetch commands in the command line.
+  6. Applies a global noise reduction for standard Program Files or developer paths.
