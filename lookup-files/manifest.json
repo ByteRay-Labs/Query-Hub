@@ -54,5 +54,9 @@
   {
     "name": "compromised-npm-packages-shai-hulud.csv",
     "description": "Shai Hulud 2.0 - Compromised NPM Packages"
+  },
+  {
+    "name": "shadow-saas.csv",
+    "description": "This lookup file is used to identify SaaS products and enrich events with additional context such as vendor and category."
   }
 ]
