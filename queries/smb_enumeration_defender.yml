@@ -1,0 +1,45 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: SMB Enumeration | Defender for Identity
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1135
+
+# Description of what the query does and its purpose.
+description: |
+  This detection query will detect SMB Enumeration based on the Microsoft defender for Identity Module
+
+# The author or team that created the query.
+author: Kundan Kumar
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Identity
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Identity
+
+# Tags for filtering and categorization.
+tags:
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #Vendor = "microsoft"
+  | #event.module = "defender-identity"
+  | Vendor.category = "AdvancedHunting-IdentityDirectoryEvents"
+  | event.action = "smb session"
+  | #event.outcome = "success"
+  | groupBy([user.name, source.address],function=[count(as=smb_sessions),count(field=Vendor.properties.DestinationDeviceName, distinct=true, as=unique_destinations),collect(fields=Vendor.properties.DestinationDeviceName),collect(fields=Vendor.properties.AdditionalFields.DestinationComputerOperatingSystem),min(@timestamp, as=start_time),max(@timestamp, as=end_time)])
+  | unique_destinations >= 3
+  | time_diff_min := (end_time - start_time) / 60000
+  | time_diff_min <= 10
+  | start_time_fmt := formatTime("%Y-%m-%d %H:%M:%S", field=start_time, timezone="UTC")
+  | end_time_fmt := formatTime("%Y-%m-%d %H:%M:%S", field=end_time, timezone="UTC")
+  | drop([start_time, end_time])
+  | sort([unique_destinations], order=desc)
+
