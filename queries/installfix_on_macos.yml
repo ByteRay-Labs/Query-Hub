@@ -1,0 +1,61 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: InstallFix on macOS
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1140
+  - T1059.004
+
+# Description of what the query does and its purpose.
+description: |
+  The InstallFix query is designed to catch the execution patterns of one-liner stagers or initial access scripts that often masquerade as legitimate system fixes or installers through a high-confidence sequence where a curl command - configured with flags typically used to bypass security or silence output - is executed in close temporal proximity (within 1 minute) to a command involving Base64 decoding.
+
+# The author or team that created the query.
+author: Szymon Kozicki
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+tags:
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #repo="base_sensor"
+  | #event_simpleName="ProcessRollup2"
+  | event_platform="Mac"
+  | correlate(
+    Base64Decode: {
+      #event_simpleName="ProcessRollup2"
+      | CommandLine=/(?i)base64\s+-(d|D)/
+    } include:[aid],
+  
+    SuspiciousCurl: {
+      #event_simpleName="ProcessRollup2"
+      | CommandLine=/(?i)curl\s+.*https?:\/\//
+      | CommandLine=/(?i)curl\s+-[a-z]*[ksfls]{4,}/
+      | rootURL := "https://falcon.us-2.crowdstrike.com/"
+      | format("[Tree](%sgraphs/process-explorer/tree?id=pid:%s:%s)", field=["rootURL", "aid", "TargetProcessId"], as="URL")
+    } include:[ComputerName, UserName, aid, CommandLine, URL],
+    within=1m,
+    sequence=true,
+    globalConstraints=[aid],
+    includeMatchesOnceOnly=true
+  )
+  | ComputerName            := SuspiciousCurl.ComputerName
+  | aid           := SuspiciousCurl.aid
+  | @timestamp         := SuspiciousCurl.@timestamp
+  | Tree           := SuspiciousCurl.URL
+  | UserName            := SuspiciousCurl.UserName
+  | Curl_CMD := SuspiciousCurl.CommandLine
+  | table([@timestamp, UserName, ComputerName, aid, Tree, Curl_CMD])
+
