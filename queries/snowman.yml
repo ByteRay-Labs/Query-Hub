@@ -1,0 +1,91 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Snowman
+
+# Description of what the query does and its purpose.
+description: |
+  This query detects potential exploitation of the April 2026 Adobe Reader zero-day vulnerability by identifying suspicious network connections originating from Adobe Reader processes shortly after they start. The exploit abuses legitimate Adobe JavaScript APIs (util.readFileIntoStream() and RSS.addFeed()) to exfiltrate system information to attacker-controlled servers.
+
+# The author or team that created the query.
+author: MS
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Detect Adobe Reader zero-day (April 2026) - Process + suspicious network activity
+    // Stage 1: Adobe Reader process starts
+    #event_simpleName=ProcessRollup2
+      ImageFileName=/\\(Acrobat|AcroRd32|AcroRd64)\.exe$/i
+    | rename(field=TargetProcessId, as=AdobePid)
+    | rename(field=aid, as=aid)
+    | rename(field=ProcessStartTime, as=PdfOpenTime)
+    | join({
+        // Stage 2: Network connections from Adobe OR child processes
+        #event_simpleName=NetworkConnectIP4 OR #event_simpleName=NetworkConnectIP6
+        | ContextBaseFileName=/\b(Acrobat|AcroRd32|AcroRd64|AdobeCollabSync|Synchronizer)\.exe\b/i
+        | rename(field=ContextProcessId, as=AdobePid)
+        | rename(field=ContextTimeStamp, as=ConnectionTime)
+    }, field=AdobePid, key=AdobePid, include=[RemoteAddressIP4, RemoteAddressIP6, RemotePort, ConnectionTime])
+  
+    | RemoteAddressIP4=* OR RemoteAddressIP6=*
+  
+    // Filter: non-standard ports (C2 used 45191, 34123)
+    // Adobe legitimately connects to 80, 443 — flag anything else
+    | RemotePort!=80 RemotePort!=443
+  
+    | eval(TimeDiffMs=ConnectionTime-PdfOpenTime)
+    | test(TimeDiffMs >= 0)
+    | test(TimeDiffMs <= 60000)
+    | eval(TimeDiffSeconds=TimeDiffMs/1000)
+  
+    // High-confidence: known C2 IOCs
+    | case {
+        RemoteAddressIP4="169.40.2.68" OR RemoteAddressIP4="188.214.34.20"
+          | Confidence:="HIGH - Known C2 IOC";
+        RemotePort=45191 OR RemotePort=34123
+          | Confidence:="MEDIUM - Known C2 port";
+        *
+          | Confidence:="LOW - Anomalous non-HTTP(S) connection";
+      }
+  
+    | table([aid, ComputerName, ImageFileName, CommandLine,
+             RemoteAddressIP4, RemotePort, Confidence,
+             PdfOpenTime, ConnectionTime, TimeDiffSeconds],
+      limit=20000)
+    | sort(Confidence, order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  # How it works
+  The query operates in two stages, joined together:
+  
+  ## Stage 1 — Process Detection
+  Searches for ProcessRollup2 events (process executions) where the image file name matches any of the three Adobe Reader binaries: Acrobat.exe (modern), AcroRd32.exe (legacy 32-bit), or AcroRd64.exe (64-bit). It captures the process ID and start time for correlation.
+  
+  ## Stage 2 — Network Connection Correlation
+  Joins against NetworkConnectIP4 and NetworkConnectIP6 events to find outbound network connections made by Adobe Reader or its known helper processes (AdobeCollabSync.exe, Synchronizer.exe). The join matches on process ID so connections are attributed to the correct Adobe session.
+  
+  ## Filtering
+  
+  - Connections to ports 80 and 443 are excluded — these are normal Adobe update/cloud traffic and would generate excessive false positives.
+  - Only connections occurring within 60 seconds of the process starting are retained, since the exploit initiates C2 communication shortly after the PDF is opened.
+  
+  ## Confidence Scoring
+  Results are triaged into three tiers:
+  
+  #### HIGH:
+  Connection to a known C2 IP (169.40.2.68 or 188.214.34.20)     
+  
+  #### MEDIUM     
+  Connection to a known C2 port (45191 or 34123) on any IP       
+  
+  #### LOW        
+  Any other non-HTTP/S outbound connection from Adobe within the time window
