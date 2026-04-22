@@ -36,7 +36,7 @@ cql: |
   #event_simpleName = ProcessRollup2
   // Filter for nslookup.exe
   | ImageFileName = /\\nslookup\.exe$/i
-  // Looks for nslookup querying a non-default server or using specific record types (like TXT) and concatenations with other commands for payload execution
+  // Looks for nslookup using specific record types (like TXT or ALL) and a piped parsing/execution chain associated with payload staging
   | CommandLine = /(nslookup|n\^s\^l\^o\^o\^k\^u\^p).*(((-q|querytype|type)=?\s*)?(txt|all)).*\|.*findstr.*\|.*for \/f.*\|.*cmd/i
   // Exclude common administrative noise if necessary
   | ParentBaseFileName != /services\.exe|monitoring_agent\.exe/i
@@ -49,12 +49,12 @@ cql: |
 explanation: |
   Targeting trusted binaries: Monitors nslookup.exe, which attackers now prefer because it is less likely to be blocked by security software than mshta or PowerShell.
   
-  External DNS Queries: Specifically looks for nslookup commands that provide a direct IP address for an external nameserver, bypassing the system's default, monitored DNS resolver.
+  DNS Record Retrieval: Looks for nslookup commands that request TXT or ALL record types, which are commonly abused to stage content over DNS.
   
-  Staging Pattern: Detects the use of findstr on the nslookup output, a known ClickFix technique to parse the "Name:" field from a DNS response and treat it as a secondary command for execution.
+  Staging Pattern: Detects the use of findstr on the nslookup output, a known ClickFix-inspired technique to parse returned DNS content and prepare it for follow-on execution.
   
-  Execution Chain: Monitors for the piping of this output directly into execution engines like PowerShell or IEX.
+  Execution Chain: Monitors for nslookup output being piped through findstr and for /f and then into cmd, which is a strong indicator of DNS response data being transformed into executable input.
   
   Evasion Detection: DNS traffic is frequently allowed through corporate firewalls, making this a "lightweight staging channel" that effectively hides data exfiltration and payload delivery in plain sight.
   
-  To test your query, run nslookup -q=txt google.com 1.1.1.1 in a command prompt. This triggers your detection by requesting a TXT record while bypassing local DNS to use an external IP. Wait a few minutes for the telemetry to ingest, then run your search to confirm the activity appears in your results.
+  To test your query, run a command that matches the full pipeline pattern, for example: nslookup -q=txt google.com | findstr /i "Name" | for /f "tokens=*" %i in ('more') do cmd /c %i. Wait a few minutes for the telemetry to ingest, then run your search to confirm the activity appears in your results.
