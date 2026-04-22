@@ -36,13 +36,12 @@ cql: |
   #event_simpleName = ProcessRollup2
   // Filter for nslookup.exe
   | ImageFileName = /\\nslookup\.exe$/i
-  // Look for nslookup querying a non-default server or using specific record types (like TXT)
-  | CommandLine = /nslookup.*(-q|querytype)=(txt|all)/i or CommandLine = /nslookup.* \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/
+  // Looks for nslookup querying a non-default server or using specific record types (like TXT) and concatenations with other commands for payload execution
+  | CommandLine = /(nslookup|n\^s\^l\^o\^o\^k\^u\^p).*(((-q|querytype|type)=?\s*)?(txt|all)).*\|.*findstr.*\|.*for \/f.*\|.*cmd/i
   // Exclude common administrative noise if necessary
   | ParentBaseFileName != /services\.exe|monitoring_agent\.exe/i
   // Summarize the activity
-  | groupBy([ComputerName, UserName, CommandLine], function=count())
-  | table([ComputerName, UserName, CommandLine, _count])
+  | groupBy([ComputerName, UserName, ParentBaseFileName, CommandLine], limit=max)
 
 # Explanation of the query.
 # Using the YAML block scalar `|` allows for multi-line strings.
