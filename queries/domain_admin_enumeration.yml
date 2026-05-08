@@ -1,0 +1,41 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Domain Admin Enumeration
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1069.002
+
+# Description of what the query does and its purpose.
+description: |
+  This query will detect Domain Admin Enumeration based on the Microsoft Defender for Identity Module
+
+# The author or team that created the query.
+author: Kundan Kumar
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Identity
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Identity
+
+# Tags for filtering and categorization.
+tags:
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #Vendor="microsoft"
+  | #event.dataset = "defender-identity.IdentityQueryEvents"
+  | Vendor.properties.QueryType ="AllDomainAdminsOrEnterpriseAdmins"
+  | table([@timestamp,host.name,destination.address,Vendor.properties.Query,Vendor.properties.AdditionalFields.SearchFilter,Vendor.properties.AdditionalFields.LdapSearchScope])
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  This query will detect Domain Admin enumeration based on the Microsoft defender for Identity log sources.
