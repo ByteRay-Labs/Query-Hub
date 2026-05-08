@@ -1,0 +1,41 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Possible DC Replication (DCSync)
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1003.006
+
+# Description of what the query does and its purpose.
+description: |
+  Detects suspicious attempts to replicate Active Directory data from a Domain Controller using the DCSync technique based on the Defender for identity module. This behavior may indicate an attacker attempting to extract sensitive credentials (such as password hashes) by mimicking domain replication requests
+
+# The author or team that created the query.
+author: Kundan Kumar
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Identity
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Identity
+
+# Tags for filtering and categorization.
+tags:
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #Vendor="microsoft"
+  | #event.dataset="defender-identity.IdentityDirectoryEvents"
+  | event.action = "directory services replication"
+  | network.protocol = drsr
+  | groupBy([user.name,Vendor.properties.AdditionalFields.FROM.DEVICE, source.address], function=[count(as=replication_count),collect(fields=[Vendor.properties.DestinationDeviceName,Vendor.properties.DestinationIPAddress,Vendor.properties.AdditionalFields.DestinationComputerOperatingSystem,Vendor.properties.AdditionalFields.SourceComputerOperatingSystemType]),min(@timestamp, as=start_time),max(@timestamp, as=end_time)])
+  | start_time_fmt := formatTime("%Y-%m-%d %H:%M:%S", field=start_time, timezone="UTC")
+  | end_time_fmt := formatTime("%Y-%m-%d %H:%M:%S", field=end_time, timezone="UTC")
+  | drop([start_time, end_time])
+  | sort([replication_count], order=desc)
+
