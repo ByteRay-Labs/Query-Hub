@@ -1,0 +1,48 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: SAMR Burst (BloodHound/PowerView)
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1087
+
+# Description of what the query does and its purpose.
+description: |
+  Detects abnormal or high‑volume Security Account Manager (SAMR) queries against Active Directory, often associated with tools like BloodHound or PowerView. This behavior typically indicates reconnaissance activity where an attacker is rapidly enumerating users, groups, and permissions to map the environment.
+
+# The author or team that created the query.
+author: Kundan Kumar
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Identity
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Identity
+
+# Tags for filtering and categorization.
+tags:
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #Vendor = "microsoft"
+  | #event.dataset="defender-identity.IdentityQueryEvents"
+  | event.action = "samr query"
+  | groupBy([user.name, source.address], function=[count(as=samr_queries),count(field=Vendor.properties.DestinationDeviceName, distinct=true, as=unique_destinations),collect(fields=[Vendor.properties.DestinationDeviceName,Vendor.properties.DestinationIPAddress,Vendor.properties.QueryType,Vendor.properties.QueryTarget]),collect(fields=Vendor.properties.DeviceName),min(@timestamp, as=start_time),max(@timestamp, as=end_time)])
+  | samr_queries > 100 //Adjust the value  as per your environment
+  | time_diff_min := (end_time - start_time) / 60000
+  | time_diff_min <= 10 //Adjust the time as per your environment
+  | start_time_fmt := formatTime("%Y-%m-%d %H:%M:%S", field=start_time, timezone="UTC")
+  | end_time_fmt := formatTime("%Y-%m-%d %H:%M:%S", field=end_time, timezone="UTC")
+  | drop([start_time, end_time])
+  | sort([samr_queries], order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  This query detects potential Active Directory enumeration by identifying users and source addresses that perform a high volume of SAMR (Security Account Manager Remote) queries against multiple destinations. It flags accounts that exceed 100 SAMR queries within a 10-minute window, which is a common indicator of tools like BloodHound or net.exe being used to enumerate AD objects
