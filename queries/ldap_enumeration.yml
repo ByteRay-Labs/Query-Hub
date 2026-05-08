@@ -1,0 +1,48 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: LDAP Enumeration
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1087
+
+# Description of what the query does and its purpose.
+description: |
+  Detects suspicious or excessive LDAP queries performed against Active Directory, as identified by Microsoft Defender for Identity. This behavior may indicate reconnaissance activity where an attacker attempts to gather information about users, groups, and domain structure for further exploitation
+
+# The author or team that created the query.
+author: Kundan Kumar
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Identity
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Identity
+
+# Tags for filtering and categorization.
+tags:
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #Vendor = "microsoft"
+  | #event.dataset="defender-identity.IdentityQueryEvents"
+  | event.action = "ldap query"
+  | groupBy([Vendor.properties.IPAddress,Vendor.properties.AdditionalFields.FROM.DEVICE], function=[count(as=ldap_queries),collect(fields=[Vendor.properties.DestinationDeviceName,Vendor.properties.Query,Vendor.properties.AdditionalFields.TARGET_OBJECT.ENTITY_USER,Vendor.properties.AdditionalFields.TARGET_OBJECT.GROUP,Vendor.properties.QueryTarget,Vendor.properties.TargetAccountUpn]),min(@timestamp, as=start_time),max(@timestamp, as=end_time)])
+  | ldap_queries > 50 //Adjust the value as per your enviorment
+  | time_diff_min := (end_time - start_time) / 60000
+  | time_diff_min <= 100 //Adjust the time as per your enviorment
+  | start_time_fmt := formatTime("%Y-%m-%d %H:%M:%S", field=start_time, timezone="UTC")
+  | end_time_fmt := formatTime("%Y-%m-%d %H:%M:%S", field=end_time, timezone="UTC")
+  | drop([start_time, end_time])
+  | sort([ldap_queries], order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  Detects suspicious or excessive LDAP queries performed against Active Directory, as identified by Microsoft Defender for Identity. This behavior may indicate reconnaissance activity where an attacker attempts to gather information about users, groups, and domain structure for further exploitation
