@@ -1,0 +1,41 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Process Execution directly from SMB share or SMB-mapped path
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1570
+
+# Description of what the query does and its purpose.
+description: |
+  This query detects remote process execution over SMB (Server Message Block) on CrowdStrike Falcon monitored endpoints — a strong indicator of lateral movement, remote code execution, or ransomware spreading across the network.
+
+# The author or team that created the query.
+author: Kundan Kumar
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+tags:
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  | #Vendor = crowdstrike
+  | #repo = "base_sensor"
+  | "#event_simpleName"="ProcessExecOnSMBFile"
+  | table([@timestamp,UserName,ComputerName,ClientComputerName,LocalAddressIP4,RemoteAddressIP4])
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  This query detects remote process execution over SMB (Server Message Block) on CrowdStrike Falcon monitored endpoints — a strong indicator of lateral movement, remote code execution, or ransomware spreading across the network.
