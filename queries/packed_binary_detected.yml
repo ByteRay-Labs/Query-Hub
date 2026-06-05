@@ -1,0 +1,51 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Packed Binary Detected
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1027.002
+
+# Description of what the query does and its purpose.
+description: |
+  This query hunts for packed executable files written to disk on CrowdStrike Falcon monitored endpoints, classifies them by risk based on write location, and groups results by computer to identify the most affected/suspicious hosts.
+
+# The author or team that created the query.
+author: Kundan Kumar
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  | #Vendor = crowdstrike
+  | #repo = "base_sensor"
+  | "#event_simpleName" = "PackedExecutableWritten"
+  | aid = ?aid
+  //| ComputerName ="XXXX" //Put your hostname here to check it for specfic host.
+  
+  | case {
+      wildcard(field=FilePath, pattern="*\\Temp\\*")         | location_risk := "High - Temp Directory" ;
+      wildcard(field=FilePath, pattern="*\\AppData\\*")      | location_risk := "High - AppData" ;
+      wildcard(field=FilePath, pattern="*\\Windows\\*")      | location_risk := "Critical - Windows Directory" ;
+      wildcard(field=FilePath, pattern="*\\System32\\*")     | location_risk := "Critical - System32" ;
+      wildcard(field=FilePath, pattern="*\\Startup\\*")      | location_risk := "Critical - Startup Folder" ;
+      wildcard(field=FilePath, pattern="*\\Downloads\\*")    | location_risk := "Medium - Downloads" ;
+      *                                                       | location_risk := "Low - Standard Path"
+    }
+  
+  | groupBy([ComputerName], function=[collect(FileName),collect(FilePath),collect(TargetFileName),collect(SHA256HashData),collect(location_risk),count(as=total_packed_writes)])
+  | sort(total_packed_writes, order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  This query hunts for packed executable files written to disk on CrowdStrike Falcon monitored endpoints, classifies them by risk based on write location, and groups results by computer to identify the most affected/suspicious hosts.
