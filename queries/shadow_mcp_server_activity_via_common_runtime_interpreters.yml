@@ -1,0 +1,92 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Shadow MCP Server Activity via Common Runtime Interpreters
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1059
+  - T1059.006
+
+# Description of what the query does and its purpose.
+description: |
+  Identifies potential shadow Model Context Protocol (MCP) server activity by detecting common runtime interpreters (e.g., Node.js, Python, NPX, UV/UVX, Docker) executing MCP-related commands. This query helps uncover unauthorized or unapproved MCP server usage across endpoints.
+
+# The author or team that created the query.
+author: Martin Peter Stenzel
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2
+  | FileName = /(?i)^(node|node\.exe|npx|npx\.cmd|python|python\.exe|python3|uv|uvx|docker|docker\.exe)$/
+  | CommandLine = /(?i)(server-filesystem|server-github|server-postgres|server-sqlite|server-puppeteer|server-brave|modelcontext|mcp)/
+  | groupBy([aid, ComputerName, UserName, FileName, CommandLine], function=[
+      count(as=Executions),
+      min(@timestamp, as=FirstSeen),
+      max(@timestamp, as=LastSeen)
+    ])
+  | sort(LastSeen, order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  ## Overview
+  
+  This query is designed to identify potential **shadow MCP (Model Context Protocol) server activity** within an environment. It focuses on detecting execution patterns associated with MCP servers that are launched through common development runtimes rather than traditional installed services.
+  
+  ## Detection Strategy
+  
+  MCP servers are typically not deployed as standalone executables. Instead, they are often started dynamically using interpreters or package runners such as:
+  
+  - `node` / `npx`
+  - `python` / `python3`
+  - `uv` / `uvx`
+  - `docker`
+  
+  To detect this behavior, the query:
+  
+  1. Filters **process execution events** (`ProcessRollup2`) for known runtime binaries.
+  2. Inspects the **command line arguments** for MCP-related keywords and known server packages:
+     - `modelcontext`, `mcp`
+     - `server-filesystem`, `server-github`, `server-postgres`, `server-sqlite`
+     - `server-puppeteer`, `server-brave`
+  3. Aggregates results by asset, user, and command line to provide visibility into:
+     - Where MCP activity occurred
+     - Who executed it
+     - When it was first and last observed
+  
+  ## Security Relevance
+  
+  This detection is particularly useful for identifying:
+  
+  - **Shadow IT / Shadow AI usage**
+  - Unauthorized MCP servers exposing internal data sources
+  - Developer-driven tool usage outside approved architectures
+  - Potential data exfiltration paths via AI tooling integrations
+  
+  Because MCP servers can run over `stdio` or ephemeral processes, they may not expose traditional network indicators. As a result, **process execution telemetry is the most reliable detection point**.
+  
+  ## MITRE ATT&CK Mapping
+  
+  - **T1059 – Command and Scripting Interpreter**
+  - **T1059.006 – Command and Scripting Interpreter: Python (when applicable)**
+  
+  ## Limitations
+  
+  - May generate false positives from legitimate development activity
+  - Does not confirm whether an MCP server is currently active (historical execution only)
+  - Detection depends on visibility into process command line arguments
+  
+  ## Recommended Follow-Up
+  
+  - Validate the executing user and asset role (developer vs production system)
