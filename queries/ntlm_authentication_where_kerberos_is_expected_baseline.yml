@@ -1,0 +1,87 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: NTLM authentication where Kerberos is expected (Baseline)
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1550.003
+
+# Description of what the query does and its purpose.
+description: |
+  This query identifies NTLM authentications observed by Active Directory in service‑based authentication contexts where Kerberos is the default and normally preferred mechanism. It filters for NTLM (v1/v2) usage during access to domain services (such as SMB, LDAP, or RPC) by leveraging the presence of a service identifier, which indicates that Kerberos should typically be available. The query aggregates events to highlight recurring NTLM fallback patterns across users, machines, and servers, and is intended for baseline exposure tracking and hygiene monitoring, not direct incident alerting.
+
+# The author or team that created the query.
+author: YV Nikhil
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Identity
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+  - Monitoring
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Hunt for NTLM authentications in scenarios where Kerberos would normally be expected
+  #event_simpleName=ActiveDirectoryAuthentication
+  
+  // Keep only NTLM authentications
+  | in(field=ActiveDirectoryAuthenticationMethod, values=[1, 2, 5])
+  
+  // Focus on service-based access (SPN/service context),
+  // where Kerberos should normally be available
+  | TargetServiceAccessIdentifier=*
+  
+  // Optional: suppress machine accounts if you want a user-only view
+  // | SourceAccountSamAccountName!=/$/
+  
+  // Map NTLM authentication method values to readable names
+  | case {
+      ActiveDirectoryAuthenticationMethod = 1 | AuthMethod := "NTLM_V1";
+      ActiveDirectoryAuthenticationMethod = 2 | AuthMethod := "NTLM_V2";
+      ActiveDirectoryAuthenticationMethod = 5 | AuthMethod := "UNKNOWN_NTLM";
+      * | AuthMethod := "OTHER";
+  }
+  
+  // Map AD protocol values for easier triage
+  | case {
+      ActiveDirectoryDataProtocol = 0 | DataProtocol := "LDAP";
+      ActiveDirectoryDataProtocol = 1 | DataProtocol := "DCE_RPC";
+      ActiveDirectoryDataProtocol = 2 | DataProtocol := "RDP";
+      ActiveDirectoryDataProtocol = 3 | DataProtocol := "SMB";
+      * | DataProtocol := format(format="PROTO_%s", field=[ActiveDirectoryDataProtocol]);
+  }
+  
+  // Summarize NTLM fallback activity
+  | groupBy([
+      SourceEndpointHostName,
+      SourceEndpointAddressIP4,
+      SourceAccountDomain,
+      SourceAccountSamAccountName,
+      TargetServiceAccessIdentifier,
+      TargetServerHostName,
+      TargetServerAddressIP4,
+      DataProtocol,
+      AuthMethod
+  ], function=[
+      sum(AggregationActivityCount, as="ntlm_auth_count"),
+      min(AggregationEarliestTimestamp, as="first_seen"),
+      max(AggregationLatestTimestamp, as="last_seen")
+  ])
+  
+  // Show highest NTLM usage first
+  | sort(field=ntlm_auth_count, order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  This query is designed to identify NTLM authentications occurring in Active Directory service contexts where Kerberos is the default and normally preferred authentication mechanism.
+  
+  Important:
+  This query does not prove malicious activity.
+  It provides visibility into architectural exposure and authentication fallback behavior.
