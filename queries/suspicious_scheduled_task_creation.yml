@@ -98,11 +98,9 @@ cql: |
 # Uses markdown for formatting on the webpage.
 explanation: |
   ## Detection Logic
-  
-  The query inspects every newly registered task (`ScheduledTaskRegistered`),
-  combines `TaskExecCommand` and `TaskExecArguments` into one string, and
-  classifies it against five high-signal patterns:
-  
+
+  The query inspects every newly registered task (`ScheduledTaskRegistered`), combines `TaskExecCommand` and `TaskExecArguments` into one string, and classifies it against five high-signal patterns:
+
   | Reason | What it catches |
   | :--- | :--- |
   | Encoded PowerShell w/ download or exec intent | `-EncodedCommand` **combined with** a download cradle, `IEX`, `FromBase64String`, or hidden window |
@@ -110,41 +108,20 @@ explanation: |
   | Payload in user-writable/temp path | Actions running from `AppData`, `Temp`, `Windows\Temp`, `Users\Public` |
   | Web URL in task action | HTTP/FTP URL embedded directly in the action |
   | Chained cmd one-liner | `cmd /c` with `&&` or pipe chaining |
-  
-  Tasks matching none of these are dropped. The encoded-PowerShell rule
-  deliberately requires a **second** signal, because legitimate monitoring and
-  management tools (e.g. update sensors) routinely use `-EncodedCommand` on its
-  own; encoding alone is not an indicator.
-  
+
+  Tasks matching none of these are dropped. The encoded-PowerShell rule deliberately requires a **second** signal, because legitimate monitoring and management tools (e.g. update sensors) routinely use `-EncodedCommand` on its own; encoding alone is not an indicator.
+
   ## The Remote-Creation Signal
-  
-  When `RemoteAddressIP4` or `RemoteAddressIP6` is populated, the task was
-  registered from another host rather than locally. Legitimate task creation is
-  overwhelmingly local, so a **REMOTE** origin layered on top of any suspicious
-  pattern should be triaged first.
-  
+
+  When `RemoteAddressIP4` or `RemoteAddressIP6` is populated, the task was registered from another host rather than locally. Legitimate task creation is overwhelmingly local, so a **REMOTE** origin layered on top of any suspicious pattern should be triaged first.
+
   ## Tuning
-  
-  - To suppress recurring known-good automation after establishing your benign
-    baseline, add an explicit author filter in the query body (see the commented
-    line), e.g. `| TaskAuthor!=/sccm-svc|rmm-deploy/i`.
-  
+
+  - To suppress recurring known-good automation after establishing your benign baseline, add an explicit author filter in the query body (see the commented line), e.g. `| TaskAuthor!=/sccm-svc|rmm-deploy/i`.
+
   ## Limitations & False Positives (read before relying on this)
-  
-  - **User-scope auto-updaters.** Consumer apps such as Zoom, Teams, and Slack
-    legitimately register per-user tasks that run from `AppData`. Expect a thin,
-    steady stream of these on the "user-writable/temp path" rule. Validate the
-    binary's signer and the task author before dismissing - the *same* rule is
-    what catches a malicious binary auto-running from `AppData`, so do not remove
-    it to silence the updaters.
-  - **TaskAuthor is spoofable.** `TaskAuthor` is a free-text field in the task
-    XML and can be set to any value by whoever creates the task. Do not treat it
-    as trustworthy, and be aware that any author-based exclusion you configure
-    (`?ExcludeAuthor`) is an evasion path: an adversary who mimics an excluded
-    author bypasses that filter.
-  - **Evasion surface.** This detection inspects task *content at registration
-    time*. An adversary who stages payloads outside the flagged paths, avoids the
-    listed LOLBins, or splits encoding from execution intent can evade it.
-  - **Coverage trade-off.** To keep noise low, bare `-EncodedCommand` (without a
-    second signal) and UNC-path actions are intentionally **not** flagged. A real
-    attack using only those techniques in isolation would not surface here.
+
+  - **User-scope auto-updaters.** Consumer apps such as Zoom, Teams, and Slack legitimately register per-user tasks that run from `AppData`. Expect a thin, steady stream of these on the "user-writable/temp path" rule. Validate the binary's signer and the task author before dismissing - the *same* rule is what catches a malicious binary auto-running from `AppData`, so do not remove it to silence the updaters.
+  - **TaskAuthor is spoofable.** `TaskAuthor` is a free-text field in the task XML and can be set to any value by whoever creates the task. Do not treat it as trustworthy, and be aware that any author-based exclusion you configure is an evasion path: an adversary who mimics an excluded author bypasses that filter.
+  - **Evasion surface.** This detection inspects task *content at registration time*. An adversary who stages payloads outside the flagged paths, avoids the listed LOLBins, or splits encoding from execution intent can evade it.
+  - **Coverage trade-off.** To keep noise low, bare `-EncodedCommand` (without a second signal) and UNC-path actions are intentionally **not** flagged. A real attack using only those techniques in isolation would not surface here.
