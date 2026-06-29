@@ -1,0 +1,150 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Suspicious Scheduled Task Creation
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1053
+  - T1053.005
+
+# Description of what the query does and its purpose.
+description: |
+  Surfaces newly registered Windows scheduled tasks whose execution command or arguments match patterns commonly abused for persistence and remote code execution: encoded PowerShell combined with download/exec intent, LOLBin proxy execution, payloads launched from user-writable paths, embedded web URLs, and chained cmd one-liners. Tasks created remotely (RemoteAddressIP4/IP6 populated) are flagged as a higher-priority lateral-movement signal. A commented author filter lets analysts suppress their own validated software-deployment / RMM accounts after baselining.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+tags:
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ScheduledTaskRegistered event_platform=Win
+  
+  // Optional scoping for testing on a single host (leave as * for fleet-wide)
+  | ComputerName=?ComputerName
+  
+  // Exclude the built-in Windows task namespace (Defender scan, Update, etc.)
+  | TaskName!=/^\\?Microsoft\\Windows\\/i
+  
+  // To suppress recurring known-good automation after baselining, add an
+  // explicit author filter here, e.g.:  | TaskAuthor!=/sccm-svc|rmm-deploy/i
+  
+  // Normalise the action fields into one searchable string
+  | TaskCmd := lower("TaskExecCommand")
+  | TaskArgs := lower("TaskExecArguments")
+  | CmdLine := format("%s %s", field=[TaskCmd, TaskArgs])
+  
+  // --- Suspicion classification -------------------------------------------
+  | case {
+      // Encoded PowerShell REQUIRES a second signal (download/exec intent),
+      // because benign monitoring/management tooling uses -encodedCommand.
+      CmdLine=/(powershell|pwsh)/i
+        AND CmdLine=/(-enc|-encodedcommand|-e\s)/i
+        AND CmdLine=/(downloadstring|downloadfile|iex|invoke-expression|frombase64string|net\.webclient|-w\s+hidden|-windowstyle\s+hidden)/i
+        | Reason := "Encoded PowerShell w/ download or exec intent" ;
+  
+      // Common LOLBins used to proxy execution
+      CmdLine=/\\(mshta|rundll32|regsvr32|wscript|cscript|certutil|bitsadmin|installutil)\.exe/i
+        | Reason := "LOLBin proxy execution" ;
+  
+      // Genuinely user-writable locations (ProgramData deliberately excluded)
+      CmdLine=/(\\appdata\\|\\users\\public\\|\\temp\\|\\windows\\temp\\|%temp%|%appdata%)/i
+        | Reason := "Payload in user-writable/temp path" ;
+  
+      // HTTP(S)/FTP URL embedded directly in the task action
+      CmdLine=/(http:\/\/|https:\/\/|ftp:\/\/)/i
+        | Reason := "Web URL in task action" ;
+  
+      // cmd one-liners chaining commands
+      CmdLine=/cmd(\.exe)?\s+\/c.*(&&|\|)/i
+        | Reason := "Chained cmd one-liner" ;
+  
+      * | Reason := "no-match" ;
+  }
+  | Reason != "no-match"
+  
+  // --- Remote creation flag (lateral movement) ----------------------------
+  | case {
+      RemoteAddressIP4=* AND RemoteAddressIP4!="0.0.0.0" | Origin := format("REMOTE (%s)", field=[RemoteAddressIP4]) ;
+      RemoteAddressIP6=*                                 | Origin := format("REMOTE (%s)", field=[RemoteAddressIP6]) ;
+      *                                                  | Origin := "local" ;
+  }
+  
+  // --- Output --------------------------------------------------------------
+  | groupBy(
+      [ComputerName, UserName, TaskAuthor, TaskName, Reason, Origin, TaskExecCommand, TaskExecArguments],
+      function=[count(as=Count), min(@timestamp, as=FirstSeen), max(@timestamp, as=LastSeen)],
+      limit=max
+  )
+  | FirstSeen := formatTime("%F %T %Z", field=FirstSeen)
+  | LastSeen  := formatTime("%F %T %Z", field=LastSeen)
+  | sort(LastSeen, order=desc)
+  | table([LastSeen, ComputerName, UserName, TaskAuthor, Origin, Reason, TaskName, TaskExecCommand, TaskExecArguments, Count, FirstSeen], limit=10000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  ## Detection Logic
+  
+  The query inspects every newly registered task (`ScheduledTaskRegistered`),
+  combines `TaskExecCommand` and `TaskExecArguments` into one string, and
+  classifies it against five high-signal patterns:
+  
+  | Reason | What it catches |
+  | :--- | :--- |
+  | Encoded PowerShell w/ download or exec intent | `-EncodedCommand` **combined with** a download cradle, `IEX`, `FromBase64String`, or hidden window |
+  | LOLBin proxy execution | `mshta`, `rundll32`, `regsvr32`, `certutil`, `bitsadmin`, `installutil`, script hosts |
+  | Payload in user-writable/temp path | Actions running from `AppData`, `Temp`, `Windows\Temp`, `Users\Public` |
+  | Web URL in task action | HTTP/FTP URL embedded directly in the action |
+  | Chained cmd one-liner | `cmd /c` with `&&` or pipe chaining |
+  
+  Tasks matching none of these are dropped. The encoded-PowerShell rule
+  deliberately requires a **second** signal, because legitimate monitoring and
+  management tools (e.g. update sensors) routinely use `-EncodedCommand` on its
+  own; encoding alone is not an indicator.
+  
+  ## The Remote-Creation Signal
+  
+  When `RemoteAddressIP4` or `RemoteAddressIP6` is populated, the task was
+  registered from another host rather than locally. Legitimate task creation is
+  overwhelmingly local, so a **REMOTE** origin layered on top of any suspicious
+  pattern should be triaged first.
+  
+  ## Tuning
+  
+  - To suppress recurring known-good automation after establishing your benign
+    baseline, add an explicit author filter in the query body (see the commented
+    line), e.g. `| TaskAuthor!=/sccm-svc|rmm-deploy/i`.
+  
+  ## Limitations & False Positives (read before relying on this)
+  
+  - **User-scope auto-updaters.** Consumer apps such as Zoom, Teams, and Slack
+    legitimately register per-user tasks that run from `AppData`. Expect a thin,
+    steady stream of these on the "user-writable/temp path" rule. Validate the
+    binary's signer and the task author before dismissing - the *same* rule is
+    what catches a malicious binary auto-running from `AppData`, so do not remove
+    it to silence the updaters.
+  - **TaskAuthor is spoofable.** `TaskAuthor` is a free-text field in the task
+    XML and can be set to any value by whoever creates the task. Do not treat it
+    as trustworthy, and be aware that any author-based exclusion you configure
+    (`?ExcludeAuthor`) is an evasion path: an adversary who mimics an excluded
+    author bypasses that filter.
+  - **Evasion surface.** This detection inspects task *content at registration
+    time*. An adversary who stages payloads outside the flagged paths, avoids the
+    listed LOLBins, or splits encoding from execution intent can evade it.
+  - **Coverage trade-off.** To keep noise low, bare `-EncodedCommand` (without a
+    second signal) and UNC-path actions are intentionally **not** flagged. A real
+    attack using only those techniques in isolation would not surface here.
