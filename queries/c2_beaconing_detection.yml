@@ -1,0 +1,136 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: C2 Beaconing Detection
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1071
+  - T1571
+  - T1041
+  - T1090.004
+
+# Description of what the query does and its purpose.
+description: |
+  Detects command-and-control (C2) beaconing by identifying outbound network connections that repeat on a regular, machine-like schedule. For each host and external destination it measures the interval between consecutive connections and the coefficient of variation (jitter relative to the mean); automated beacons hold a fixed cadence and stand out with a very low coefficient of variation, unlike bursty human-driven traffic. Destinations served by many anycast or CDN edge IPs (Fastly, Cloudflare, cloud providers) are consolidated by owning organization and cadence, so a single beacon is reported once rather than as many near-duplicate rows. The detection is purely behavioral and needs no IOC list or threat feed, making it effective against novel or custom C2 infrastructure.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=NetworkConnectIP4
+  
+  // Keep only egress to routable / external destinations
+  | !cidr(RemoteAddressIP4, subnet=[
+      "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+      "127.0.0.0/8", "169.254.0.0/16", "224.0.0.0/4",
+      "0.0.0.0/8", "100.64.0.0/10"
+    ])
+  
+  // Drop high-volume benign services that create artificial regularity
+  | RemotePort != 53
+  | RemotePort != 123
+  | RemotePort != 137
+  | RemotePort != 138
+  
+  // ===== STAGE 1: detect beacons per destination IP =====
+  // Channel = host -> (remote IP + port). Keeping the IP here means two distinct
+  // beacons to the same provider are never merged before their cadence is measured.
+  | ConnKey := format(format="%s:%s", field=[RemoteAddressIP4, RemotePort])
+  | ts := @timestamp
+  | sort(field=[aid, ConnKey, ts], order=[asc, asc, asc], limit=max)
+  | neighbor(include=[ts, aid, ConnKey], prefix=prev, direction=preceding)
+  | test(aid == prev.aid)
+  | test(ConnKey == prev.ConnKey)
+  | Delta := (ts - prev.ts) / 1000
+  | Delta >= 1
+  | groupBy([aid, ComputerName, RemoteAddressIP4, RemotePort], function=[
+      count(as=Beacons),
+      avg(Delta, as=AvgInterval),
+      stdDev(field=Delta, as=JitterStdDev)
+    ], limit=max)
+  | CoV := JitterStdDev / AvgInterval
+  
+  // Beaconing profile (applied per IP so each real channel is judged on its own)
+  | Beacons >= 8
+  | AvgInterval >= 10
+  | AvgInterval <= 86400
+  | CoV < 0.10
+  
+  // ===== STAGE 2: de-duplicate anycast edges by (org + cadence) =====
+  | asn(RemoteAddressIP4)
+  | Org := coalesce([RemoteAddressIP4.org, RemoteAddressIP4])
+  
+  // --- OPTIONAL ALLOWLIST ------------------------------------------------
+  // Populate with orgs already attributed to benign scheduled software.
+  // Do NOT blanket-trust Fastly / Cloudflare / Google - they are common C2
+  // fronting providers; allowlist only AFTER confirming the process.
+  // | !in(field=Org, values=["EXAMPLE VENDOR ORG", "ANOTHER TRUSTED ORG"])
+  // -----------------------------------------------------------------------
+  
+  // Bucket the interval to the nearest minute so identical-cadence siblings merge,
+  // but channels with genuinely different intervals remain distinct rows.
+  | CadenceBucket := AvgInterval / 60
+  | CadenceBucket := round(CadenceBucket)
+  | groupBy([aid, ComputerName, Org, RemotePort, CadenceBucket], function=[
+      count(as=EdgeIPs),
+      collect([RemoteAddressIP4], limit=25),
+      avg(Beacons, as=Beacons),
+      avg(AvgInterval, as=AvgInterval),
+      avg(JitterStdDev, as=JitterStdDev),
+      avg(CoV, as=CoV)
+    ], limit=max)
+  
+  | Beacons := round(Beacons)
+  | AvgInterval := round(AvgInterval)
+  | JitterStdDev := round(JitterStdDev)
+  | sort(field=CoV, order=asc, limit=20000)
+  | format(format="%.4f", field=CoV, as=CoV)
+  | table([ComputerName, aid, Org, RemotePort, EdgeIPs, RemoteAddressIP4, Beacons, AvgInterval, JitterStdDev, CoV], limit=20000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  ## Output
+   
+    | Field | Meaning |
+    | :--- | :--- |
+    | `Org` | Owning organization from `asn()`, or the raw IP if unresolved |
+    | `EdgeIPs` | Distinct IPs merged into this finding (high = anycast/CDN) |
+    | `RemoteAddressIP4` | The member edge IPs |
+    | `Beacons` / `AvgInterval` / `JitterStdDev` / `CoV` | Regularity metrics (averaged across merged edges, which are near-identical by construction) |
+   
+    ## The allowlist is deliberately empty
+   
+    Domain fronting and CDN-hosted redirectors (T1090.004) mean adversaries actively use Fastly / Cloudflare / Google for C2. Allowlist an org only after attributing the traffic to a specific, expected process on the specific host - never on provider reputation alone.
+   
+    ## Recommendation
+   
+    Pivot each surviving finding to the responsible binary via `ContextProcessId`:
+   
+    ```
+    #event_simpleName=NetworkConnectIP4
+    | aid="<AID>"
+    | RemoteAddressIP4=/<one of the edge IPs>/
+    | groupBy([aid, ContextProcessId], function=count(as=Conns))
+    | join({#event_simpleName=ProcessRollup2}, field=[aid, ContextProcessId],
+           key=[aid, TargetProcessId],
+           include=[FileName, ImageFileName, CommandLine, ParentBaseFileName, UserName],
+           mode=left)
+    | table([UserName, ParentBaseFileName, FileName, CommandLine, ImageFileName, Conns])
+    ```
