@@ -1,0 +1,121 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Ransomware Precursors
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1490
+  - T1070.004
+
+# Description of what the query does and its purpose.
+description: |
+  Detects command patterns that ransomware operators execute immediately before encryption to prevent recovery: Volume Shadow Copy deletion (vssadmin, WMIC, PowerShell WMI/CIM), backup catalog destruction (wbadmin), Windows Recovery Environment tampering (bcdedit), USN journal deletion (fsutil), and mass shadow storage resizing. Each event is classified into a named hypothesis so analysts can triage by technique. These commands are rare in legitimate day-to-day operation and their appearance - especially several within a short window on the same host - is one of the strongest early-warning signals of an imminent ransomware detonation.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+tags:
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2 event_platform=Win
+  // Optional scoping for testing on a single host
+  | ComputerName=?ComputerName
+  // Normalise the command line once for all subsequent matching
+  | CmdLower := lower("CommandLine")
+  // --- Recovery-inhibition classification ---------------------------------
+  | case {
+      // Shadow copy deletion via vssadmin
+      ImageFileName=/\\vssadmin\.exe$/i
+        AND CmdLower=/delete\s+shadows/
+        | Hypothesis := "H1_VSSADMIN_SHADOW_DELETE" | Confidence := "High";
+  
+      // Shadow storage resize to force silent shadow deletion (401 KB trick)
+      ImageFileName=/\\vssadmin\.exe$/i
+        AND CmdLower=/resize\s+shadowstorage/
+        | Hypothesis := "H2_VSSADMIN_SHADOWSTORAGE_RESIZE" | Confidence := "Medium";
+  
+      // Shadow copy deletion via WMIC
+      ImageFileName=/\\wmic\.exe$/i
+        AND CmdLower=/shadowcopy/ AND CmdLower=/delete/
+        | Hypothesis := "H3_WMIC_SHADOW_DELETE" | Confidence := "High";
+  
+      // Shadow copy deletion via PowerShell WMI/CIM
+      ImageFileName=/\\(powershell|powershell_ise|pwsh)\.exe$/i
+        AND CmdLower=/win32_shadowcopy|get-wmiobject.{0,40}shadowcopy|get-ciminstance.{0,40}shadowcopy/
+        AND CmdLower=/delete|remove/
+        | Hypothesis := "H4_POWERSHELL_SHADOW_DELETE" | Confidence := "High";
+  
+      // Backup catalog / system state backup destruction
+      ImageFileName=/\\wbadmin\.exe$/i
+        AND CmdLower=/delete\s+(catalog|systemstatebackup|backup)/
+        | Hypothesis := "H5_WBADMIN_BACKUP_DELETE" | Confidence := "High";
+  
+      // Disable Windows Recovery Environment / automatic repair
+      ImageFileName=/\\bcdedit\.exe$/i
+        AND CmdLower=/recoveryenabled\s+(no|off)|bootstatuspolicy\s+ignoreallfailures/
+        | Hypothesis := "H6_BCDEDIT_RECOVERY_TAMPER" | Confidence := "High";
+  
+      // USN change journal deletion (anti-forensics, common in ransomware playbooks)
+      ImageFileName=/\\fsutil\.exe$/i
+        AND CmdLower=/usn\s+deletejournal/
+        | Hypothesis := "H7_FSUTIL_USN_DELETE" | Confidence := "Medium";
+  
+      * | Hypothesis := "NO_MATCH";
+  }
+  | Hypothesis != "NO_MATCH"
+  // --- Output --------------------------------------------------------------
+  | groupBy([aid, ComputerName], function=[
+      count(as=PrecursorEvents),
+      count(Hypothesis, distinct=true, as=DistinctTechniques),
+      min(@timestamp, as=FirstSeen),
+      max(@timestamp, as=LastSeen),
+      collect([Hypothesis, Confidence, UserName, ImageFileName, CommandLine, ParentBaseFileName])
+    ], limit=10000)
+  // Multiple distinct recovery-inhibition techniques on one host is near-certain ransomware staging
+  | case {
+      DistinctTechniques >= 2 | Priority := "CRITICAL - multiple recovery-inhibition techniques";
+      PrecursorEvents >= 3    | Priority := "HIGH - repeated recovery-inhibition activity";
+      *                       | Priority := "MEDIUM - single event, validate context";
+  }
+  | FirstSeen := formatTime("%F %T %Z", field=FirstSeen)
+  | LastSeen := formatTime("%F %T %Z", field=LastSeen)
+  | sort(DistinctTechniques, order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  ## Why this matters
+  
+  Before deploying an encryptor, virtually every major ransomware family (LockBit, BlackCat/ALPHV, Akira, Conti descendants, Ryuk, and others) runs a near-identical "recovery inhibition" playbook so victims cannot restore from local snapshots or backups. Because these commands are executed **minutes before encryption begins**, detecting them provides one of the last actionable intervention windows in a ransomware intrusion.
+  
+  ## Detection hypotheses
+  
+  | Hypothesis | Command pattern | Notes |
+  | :--- | :--- | :--- |
+  | H1 | `vssadmin delete shadows /all /quiet` | The single most common ransomware precursor |
+  | H2 | `vssadmin resize shadowstorage /maxsize=401MB` | Forces Windows to silently purge shadow copies; used to evade "delete shadows" detections |
+  | H3 | `wmic shadowcopy delete` | WMIC-based variant |
+  | H4 | PowerShell `Win32_ShadowCopy` / `Get-CimInstance ... \| Remove` | Script-based variant |
+  | H5 | `wbadmin delete catalog -quiet` | Destroys the Windows Backup catalog |
+  | H6 | `bcdedit /set {default} recoveryenabled no` + `bootstatuspolicy ignoreallfailures` | Prevents booting into WinRE for repair/restore |
+  | H7 | `fsutil usn deletejournal /D C:` | Anti-forensics; wipes the NTFS change journal |
+  
+  ## Triage guidance
+  
+  - **`Priority = CRITICAL`** (2+ distinct techniques on one host): treat as active ransomware staging. Network-contain the host immediately and pivot on `ParentBaseFileName` and sibling processes.
+  - **Single H1/H3/H5/H6 events**: still high-signal. Legitimate occurrences are rare and usually tied to storage administration or imaging/backup software - check the parent process and the executing user.
+  - **Known false-positive sources**: backup agents (Veeam, Commvault), disk-cloning tools, and some VDI provisioning workflows may resize shadow storage (H2) or manage snapshots. Baseline these and add an exclusion on `ParentBaseFileName` or `UserName` rather than removing the hypothesis.
