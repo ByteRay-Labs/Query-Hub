@@ -1,6 +1,6 @@
 # --- Query Metadata ---
 # Human-readable name for the query. Will be displayed as the title.
-name: Nicholas Yovanovich
+name: Overnight Post-RDP Activity Detection
 
 # MITRE ATT&CK technique IDs
 mitre_ids:
