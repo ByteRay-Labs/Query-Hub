@@ -1,0 +1,119 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Nicholas Yovanovich
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1021.001
+  - T1033
+  - T1087.001
+  - T1087.002
+  - T1069.001
+  - T1069.002
+  - T1057
+  - T1049
+  - T1082
+  - T1016
+  - T1059.001
+  - T1059.003
+  - T1105
+  - T1048
+  - T1560.001
+  - T1567
+
+# Description of what the query does and its purpose.
+# Using the YAML block scalar `|` allows for multi-line strings.
+description: |
+  Correlates remote interactive logons (UserLogon, LogonType=10) occurring during overnight hours with suspicious process execution (ProcessRollup2) from the same logon session, within 30 minutes of the logon.
+  
+  Processes are matched on ImageFileName against a broad set of native tools and LOLBins (shells, script engines, recon utilities, transfer/archive tools, remote-exec binaries) and classified by CommandLine into signal categories: Enumeration, PowerShell Enumeration, Transfer or Archive Utility, PowerShell Transfer or Archive, and encoded Command Processor/PowerShell. Uncategorized processes are dropped.
+
+# The author or team that created the query.
+author: Nicholas Yovanovich
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+# Include relevant techniques, tactics, or platforms.
+tags:
+  - Hunting
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2 event_platform=Win
+  | ImageFileName=/\\(cmd|powershell|pwsh|wscript|cscript|mshta|rundll32|regsvr32|wmic|msbuild|installutil|regasm|regsvcs|certutil|bitsadmin|schtasks|sc|net|net1|nltest|whoami|quser|query|systeminfo|hostname|tasklist|netstat|ipconfig|curl|wget|rclone|scp|sftp|ftp|makecab|tar|7z|7za|rar|winrar|psexec|paexec|winrs|ssh|python|pythonw)\.exe$/i
+  // Parent/GrandParent: DENYLIST (fails open) — blank or unknown lineage still passes; only listed off-hours noise is dropped.
+  // To tune: add a process BASE name (no path, no .exe), case-insensitive, pipe-separated, inside the ( ) on BOTH lines as you confirm benign off-hours jobs.
+  // Example (parent): | ParentBaseFileName!=/^(AteraAgent|Syncro|Pulseway)\.exe$/i
+  // Example (grandparent): | GrandParentBaseFileName!=/^(MeshAgent|NinjaRMMAgent|CagService)\.exe$/i
+  | ParentBaseFileName!=/^()\.exe$/i
+  | GrandParentBaseFileName!=/^()\.exe$/i
+  | case {
+  CommandLine=/\b(whoami|quser|query\s+user|net1?(\.exe)?"?\s+(users?|group|localgroup|session)|nltest|ipconfig\s+\/all|systeminfo|hostname|tasklist|wmic|netstat)\b/i
+  | SignalType := "Enumeration";
+  CommandLine=/\b(Get-Process|Get-NetTCPConnection|Get-SmbShare|Get-ADUser|Get-ADComputer|Get-DomainUser|Get-DomainComputer)\b/i
+  | SignalType := "PowerShell Enumeration";
+  CommandLine=/\b(rclone|curl|wget|scp|sftp|ftp|bitsadmin|certutil|makecab|tar|7z|7za|rar|winrar)\b/i
+  | SignalType := "Transfer or Archive Utility";
+  CommandLine=/\b(Invoke-WebRequest|Invoke-RestMethod|Start-BitsTransfer|Compress-Archive|System\.IO\.Compression)\b/i
+  | SignalType := "PowerShell Transfer or Archive";
+  ImageFileName=/\\(cmd|powershell|pwsh)\.exe$/i AND CommandLine=/\s-(?:enc|encodedcommand)(?:\s|$|:)/i
+  | SignalType := "Windows Command Processor or PowerShell";
+  *
+  | SignalType := "Other"
+  }
+  | SignalType!="Other"
+  | CommandTimestampMs := ProcessStartTime * 1000
+  | join(
+  {
+  #event_simpleName=UserLogon event_platform=Win LogonType=10
+  | remoteHour := formatTime("%H", field=@timestamp, locale=en_US, timezone="America/Vancouver") // adjust timezone to where your clients/company operate (e.g. America/New_York for Eastern)
+  | in(field=remoteHour, values=["21","22","23","00","01","02","03"]) // adjust hours here as well if needed: Example: "02" will detect up to 02:59:99
+  | LogonTimestampMs := LogonTime * 1000
+  },
+  field=AuthenticationId,
+  include=[LogonTimestampMs, UserPrincipal, RemoteAddressIP4, LogonType]
+  )
+  | TimeFromLogonMinutes := (CommandTimestampMs - LogonTimestampMs) / 60000
+  | TimeFromLogonMinutes >= 0
+  | TimeFromLogonMinutes <= 30 // adjust for a longer capture window from logon to command execution
+  | table([@timestamp, cid, LogonTimestampMs, CommandTimestampMs, TimeFromLogonMinutes, aid, ComputerName, UserName, UserPrincipal, LogonType, RemoteAddressIP4, SignalType, ImageFileName, FileName, FilePath, CommandLine, ParentBaseFileName, GrandParentBaseFileName, OriginalFilename, SHA256HashData], limit=1000)
+  | sort(@timestamp, order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  # Overnight Post-RDP Activity — Query Explanation
+  
+  ## Design
+  Finds recon/staging commands run within 30 min of an overnight RDP logon.
+  - **Primary:** `ProcessRollup2` (processes)  •  **Subquery:** `UserLogon` (logons)
+  - **Join key:** `AuthenticationId` (constant per logon session)
+  - **Gate:** process starts 0–30 min after logon
+  
+  `ProcessRollup2` is primary because `join()` returns only one subquery row per key. A session has one `AuthenticationId` but many processes, so a logon-primary join would collapse to one row. Process-primary = each process is its own row.
+  
+  ## Sections
+  - **Event + image filter** — Windows `ProcessRollup2`, restricted to shells, script engines, LOLBins, recon and transfer/archive tools. Kept broad; the time window controls volume.
+  - **Lineage denylist** (`ParentBaseFileName!=/^()\.exe$/i`, grandparent same) — fails open: blank/unknown parents pass. Positive allowlists were avoided (they silently drop real hits with blank lineage). Add benign off-hours job names inside `( )` to trim noise.
+  - **Classification (`case`)** — tags each process by `CommandLine`: Enumeration, PowerShell Enumeration, Transfer/Archive, PowerShell Transfer/Archive, encoded PowerShell; else `Other`. `net1?(\.exe)?"?\s+` matches `net`/`net1` and both full-path-quoted and bare forms (PowerShell full-paths binaries, cmd passes them raw).
+  - **Drop + timestamp** — `SignalType!="Other"` removes unclassified rows. `ProcessStartTime * 1000` (epoch sec → ms).
+  - **Join** — subquery keeps `LogonType=10` (RDP) logons in 21:00–03:59 local via `formatTime` + `in()`; `LogonTime * 1000` → ms; matched on `AuthenticationId`.
+  - **Window + output** — `TimeFromLogonMinutes = (Command - Logon) / 60000`, bounded `>= 0` and `<= 30`, tabled and sorted newest-first. Uses `LogonTime`/`ProcessStartTime` (real event times), NOT `@timestamp` (sensor report time — would skew the delta).
+  
+  ## Tuning
+  - **Timezone** — set subquery TZ to endpoint location (`America/New_York` = Eastern). Mismatch silently drops logons.
+  - **Hours** — edit `remoteHour` values.
+  - **Window** — adjust `TimeFromLogonMinutes <= 30`.
+  - **Noise** — add parent/grandparent names to the denylists.
