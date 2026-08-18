@@ -54,7 +54,21 @@ if out_path.exists():
     out_path = out_dir / f"{slug}_{g('submission_id')[-6:] or 'new'}.yml"
     slug = out_path.stem
 
-mitre_ids = [m.upper() for m in re.split(r"[\s,;]+", g("mitre_ids")) if m]
+def norm_mitre(value: str):
+    """'t1003, 1003.001 ; TA0006' -> ['T1003', 'T1003.001', 'TA0006']. Drops junk."""
+    out = []
+    for m in re.split(r"[\s,;]+", value):
+        m = m.strip().upper()
+        if not m:
+            continue
+        if re.fullmatch(r"\d{4}(\.\d{3})?", m):      # missing 'T' prefix
+            m = "T" + m
+        if re.fullmatch(r"T\d{4}(\.\d{3})?|TA\d{4}", m):
+            out.append(m)
+    return list(dict.fromkeys(out))  # dedupe, keep order
+
+
+mitre_ids = norm_mitre(g("mitre_ids"))
 tags = split_list(g("tags"))
 log_sources = split_list(g("log_sources"))
 modules = split_list(g("cs_required_modules"))
@@ -68,7 +82,8 @@ sections = [
     "",
 ]
 if mitre_ids:
-    sections += ["# MITRE ATT&CK technique IDs", "mitre_ids:", yaml_list(mitre_ids), ""]
+    sections += ["# MITRE ATT&CK technique IDs", "mitre_ids:",
+                 "\n".join(f"  - {json.dumps(m)}" for m in mitre_ids), ""]
 if g("description"):
     sections += ["# Description of what the query does and its purpose.",
                  f"description: {json.dumps(g('description'))}", ""]
