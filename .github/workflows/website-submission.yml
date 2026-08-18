@@ -1,0 +1,63 @@
+name: Website Submission → Pull Request
+
+on:
+  repository_dispatch:
+    types: [query-submission]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: website-submission-${{ github.event.client_payload.submission_id }}
+  cancel-in-progress: false
+
+jobs:
+  open-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - run: pip install pyyaml
+
+      - name: Build query YAML from submission
+        id: build
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: python .github/scripts/build_query_from_submission.py
+
+      # Reuse the same rules as validate.yml so a broken submission never opens a PR.
+      - name: Validate generated file
+        run: python .github/scripts/validate_single.py "${{ steps.build.outputs.file }}"
+
+      # Mint a short-lived installation token for the "CQL Hub Submission Bot" GitHub App.
+      # Using an app token (not GITHUB_TOKEN) makes sure the PR triggers "Validate Queries",
+      # and the PR is authored by the bot rather than a person.
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SUBMISSION_APP_ID }}
+          private-key: ${{ secrets.SUBMISSION_APP_PRIVATE_KEY }}
+
+      - name: Open pull request
+        id: pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          branch: submission/${{ steps.build.outputs.slug }}
+          delete-branch: true
+          commit-message: "Add query: ${{ steps.build.outputs.name }}"
+          title: "[Submission] ${{ steps.build.outputs.name }}"
+          labels: community-submission
+          body-path: ${{ steps.build.outputs.pr_body_file }}
+          # Give the contributor credit in the git history (uses noreply address, email is not exposed)
+          author: ${{ steps.build.outputs.git_author }}
+
+      - name: Summary
+        run: |
+          echo "PR: ${{ steps.pr.outputs.pull-request-url }}" >> "$GITHUB_STEP_SUMMARY"
