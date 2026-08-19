@@ -1,0 +1,54 @@
+name: Sync Queries to Webflow
+
+on:
+  # Runs automatically after "Validate Queries" succeeded on main
+  workflow_run:
+    workflows: ["Validate Queries"]
+    types: [completed]
+    branches: [main]
+  # Manual trigger: full resync, optional dry run
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (print plan, change nothing in Webflow)"
+        type: boolean
+        default: false
+      force:
+        description: "Bypass the mass-deletion safety limit"
+        type: boolean
+        default: false
+
+# Never run two syncs in parallel; queue the latest one instead
+concurrency:
+  group: webflow-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # for workflow_run: only if validation passed; workflow_dispatch always runs
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0          # full history: created/updated dates come from git log
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install pyyaml markdown requests
+
+      - name: Sync to Webflow
+        env:
+          WEBFLOW_API_TOKEN: ${{ secrets.WEBFLOW_API_TOKEN }}
+          WEBFLOW_COLLECTION_ID: ${{ secrets.WEBFLOW_COLLECTION_ID }}
+        run: |
+          ARGS=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ "${{ inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
+          python .github/scripts/sync_webflow.py $ARGS
