@@ -1,0 +1,65 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: "Headless Chromium Remote Debugging on macOS"
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - "T1219"
+  - "T1113"
+
+# Description of what the query does and its purpose.
+description: "Detects Chromium-family browsers on macOS launched in headless mode with a remote debugging port, enabling Chrome DevTools Protocol automation or remote browser control."
+
+# The author or team that created the query.
+author: "slapopotamus"
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules:
+  - Insight
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+cql: |
+  // OVERVIEW: Detects a Chromium-family browser on macOS launched headless with
+  // a remote debugging port, enabling Chrome DevTools Protocol automation or control.
+  // SOURCE HUNTPACK: AmnesiaStealer macOS ClickFix Hunt
+  // MITRE: T1219, T1113
+  // CONF: medium | FP: medium | COST: low
+  // REQUIRES: ProcessRollup2, SyntheticProcessRollup2 (macOS)
+  // FALSE POSITIVES: Legitimate browser automation or QA using Selenium, Puppeteer, or Playwright.
+  // TUNING: Exclude approved CI hosts, automation accounts, and known framework parent processes.
+  // LOOKBACK: 14d - set with the Falcon time picker.
+  #event_simpleName=/ProcessRollup2|SyntheticProcessRollup2/
+  | event_platform=Mac
+  | FileName=/^(Google Chrome|Brave Browser|Microsoft Edge|Arc|Opera|Vivaldi|Chromium)$/i
+  | CommandLine=/--remote-debugging-port=[0-9]+/i
+  | CommandLine=/--headless/i
+  | groupBy([ComputerName, ParentBaseFileName, FileName, CommandLine, UserName], function=count(aid, as=hits))
+  | sort(hits, order=desc)
+
+# Explanation of the query. Uses markdown for formatting on the webpage.
+explanation: |
+  This query hunts for Chromium-family browsers on macOS launched headless with a Chrome DevTools Protocol remote-debugging port. This permits browser automation and can enable control of an authenticated browser session.
+
+  Source: [AmnesiaStealer macOS ClickFix HuntPack](https://slapopotamus.github.io/HuntPack/hunts/AmnesiaStealer-macOS-ClickFix-Hunt.html).
+
+  1. Selects ProcessRollup2 and SyntheticProcessRollup2 events from macOS.
+
+  2. Restricts results to common Chromium-family browser processes.
+
+  3. Requires a numeric --remote-debugging-port argument.
+
+  4. Requires headless browser execution.
+
+  5. Groups results by host, parent, browser, command line, and user.
+
+  False positives and tuning: Selenium, Puppeteer, Playwright, QA systems, monitoring agents, and CI runners can legitimately use both flags. Baseline approved automation hosts and parents. Prioritize unexpected interactive-user endpoints and unusual parent processes.
+
+  Limitations: These flags enable CDP control but do not prove malicious activity or confirm that an operator connected. The query is limited to macOS and the listed browser process names.
