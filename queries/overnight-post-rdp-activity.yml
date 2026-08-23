@@ -81,7 +81,7 @@ cql: |
   | in(field=remoteHour, values=["21","22","23","00","01","02","03"]) // adjust hours here as well if needed: Example: "02" will detect up to 02:59:99
   | LogonTimestampMs := LogonTime * 1000
   },
-  field=AuthenticationId,
+  field=[aid, AuthenticationId],
   include=[LogonTimestampMs, UserPrincipal, RemoteAddressIP4, LogonType]
   )
   | TimeFromLogonMinutes := (CommandTimestampMs - LogonTimestampMs) / 60000
