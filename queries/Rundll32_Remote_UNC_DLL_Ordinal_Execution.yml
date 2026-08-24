@@ -38,7 +38,8 @@ cql: |
   // LOOKBACK: 7d - set with the Falcon time picker.
   #event_simpleName=ProcessRollup2
   | FileName=/^rundll32(\.exe)?$/i
-  | CommandLine=/\\\\[a-z0-9.\-]+\\/i
+  // UNC host, optionally with WebDAV @port / @SSL suffixes (\\host\ , \\host@80\ , \\host@SSL\)
+  | CommandLine=/\\\\[a-z0-9._\-]+(@[a-z0-9]+)*\\/i
   | CommandLine=/,#[0-9]+/i
   | table([@timestamp, ComputerName, UserName, ParentBaseFileName, CommandLine])
   | sort(@timestamp, order=desc, limit=500)
@@ -55,8 +56,8 @@ explanation: |
   2. **Identify rundll32 execution**: `FileName=/^rundll32(\.exe)?$/i`
      - Restricts results to the Windows signed binary used to load and execute DLL exports.
 
-  3. **Require a remote UNC path**: `CommandLine=/\\\\[a-z0-9.\-]+\\/i`
-     - Finds command lines that reference a DLL or share hosted on a remote system.
+  3. **Require a remote UNC path**: `CommandLine=/\\\\[a-z0-9._\-]+(@[a-z0-9]+)*\\/i`
+     - Finds command lines that reference a DLL or share hosted on a remote system. The optional `@…` group also matches WebDAV-style hosts such as `\\host@80\` and `\\host@SSL\`, which are how the ClickFix/GULoader variants deliver the DLL.
 
   4. **Require ordinal-based invocation**: `CommandLine=/,#[0-9]+/i`
      - Selects rundll32 command lines that invoke an export by numeric ordinal rather than by name.
@@ -66,4 +67,5 @@ explanation: |
 
   **False positives and tuning:** Some enterprise deployment systems legitimately load DLLs from network shares. Validate the remote host, share, parent process, file signature, and deployment change record before excluding activity. Limit exclusions to approved distribution hosts and reviewed command-line patterns.
 
-  **Limitations:** The query identifies suspicious execution behavior, not a confirmed compromise. It requires command-line telemetry and only detects UNC paths written with a hostname or address after the leading double backslash.
+  **Limitations:** The query identifies suspicious execution behavior, not a confirmed compromise. It requires command-line telemetry and only detects UNC paths written with a hostname or address after the leading double backslash (including WebDAV `@port` / `@SSL` forms). Paths built at runtime from environment variables or string concatenation are not visible in the command line and will not match.
+  
