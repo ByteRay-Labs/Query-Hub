@@ -1,0 +1,68 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: "Command History with Process Tree"
+
+# Description of what the query does and its purpose.
+description: "Correlates CommandHistory events with ProcessRollup2 to show PowerShell commands along with full execution chain (parent \u2192 child process tree). Provides complete context for PowerShell activity."
+
+# The author or team that created the query.
+author: "Kuribot"
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+cql: |
+  #event_simpleName=/^(CommandHistory|ProcessRollup2)$/
+  event_platform=Win
+  | case {
+      #event_simpleName=CommandHistory
+      | CommandHistory=*
+      | splitString(
+          field=CommandHistory,
+          by="¶",
+          as=CommandHistorySplit
+        )
+      | concatArray(
+          CommandHistorySplit,
+          separator="\n",
+          as=CommandHistoryClean
+        );
+
+      #event_simpleName=ProcessRollup2;
+    }
+  | selfJoinFilter(
+      field=[aid, TargetProcessId],
+      where=[
+        { #event_simpleName=ProcessRollup2 },
+        { #event_simpleName=CommandHistory }
+      ]
+    )
+  | #event_simpleName=CommandHistory
+  | CommandHistoryClean=*
+  | @rawstring := CommandHistoryClean
+
+# Explanation of the query. Uses markdown for formatting on the webpage.
+explanation: |
+  ## How It Works
+  1. **Collects two event types**:
+     - CommandHistory: PowerShell commands executed
+     - ProcessRollup2: Process creation with parent info
+  2. **Processes CommandHistory**:
+     - Splits multi-line commands (separator: ¶)
+     - Formats cleanly with newlines
+  3. **Creates ExecutionChain**:
+     - Shows: Parent → Child (PID)
+     - Example: `cmd.exe → powershell.exe (PID: 1234)`
+  4. **Correlates via selfJoinFilter**:
+     - Joins on aid + TargetProcessId
+     - Ensures both events present
+  5. **Groups results**:
+     - One result per PowerShell process
+     - Includes all commands executed
