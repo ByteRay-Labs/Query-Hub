@@ -3,10 +3,14 @@
 name: "Command History with Process Tree"
 
 # Description of what the query does and its purpose.
-description: "Correlates CommandHistory events with ProcessRollup2 to show PowerShell commands along with full execution chain (parent \u2192 child process tree). Provides complete context for PowerShell activity."
+description: "Correlates CommandHistory events with ProcessRollup2 to show PowerShell command history together with the execution chain (parent \u2192 child process with PID). Provides context on how each PowerShell session was launched."
 
 # The author or team that created the query.
 author: "Kuribot"
+
+# MITRE ATT&CK technique IDs covered by this query.
+mitre_ids:
+  - T1059.001
 
 # The required log sources to run this query successfully in Next-Gen SIEM.
 log_sources:
@@ -21,6 +25,13 @@ tags:
 cql: |
   #event_simpleName=/^(CommandHistory|ProcessRollup2)$/
   event_platform=Win
+  | selfJoinFilter(
+      field=[aid, TargetProcessId],
+      where=[
+        { #event_simpleName=ProcessRollup2 },
+        { #event_simpleName=CommandHistory }
+      ]
+    )
   | case {
       #event_simpleName=CommandHistory
       | CommandHistory=*
@@ -35,34 +46,43 @@ cql: |
           as=CommandHistoryClean
         );
 
-      #event_simpleName=ProcessRollup2;
+      #event_simpleName=ProcessRollup2
+      | ImageFileName=/\\(?<ChildBaseFileName>[^\\]+)$/
+      | ExecutionChain := format(
+          format="%s → %s (PID: %s)",
+          field=[ParentBaseFileName, ChildBaseFileName, RawProcessId]
+        );
     }
-  | selfJoinFilter(
-      field=[aid, TargetProcessId],
-      where=[
-        { #event_simpleName=ProcessRollup2 },
-        { #event_simpleName=CommandHistory }
-      ]
-    )
-  | #event_simpleName=CommandHistory
+  | groupBy([aid, ComputerName, TargetProcessId], function=[
+      selectLast(ExecutionChain),
+      selectLast(CommandHistoryClean)
+    ], limit=max)
   | CommandHistoryClean=*
-  | @rawstring := CommandHistoryClean
 
 # Explanation of the query. Uses markdown for formatting on the webpage.
 explanation: |
   ## How It Works
-  1. **Collects two event types**:
-     - CommandHistory: PowerShell commands executed
-     - ProcessRollup2: Process creation with parent info
-  2. **Processes CommandHistory**:
-     - Splits multi-line commands (separator: ¶)
-     - Formats cleanly with newlines
-  3. **Creates ExecutionChain**:
-     - Shows: Parent → Child (PID)
-     - Example: `cmd.exe → powershell.exe (PID: 1234)`
-  4. **Correlates via selfJoinFilter**:
+  1. **Collects two event types** (Windows only):
+     - CommandHistory: the console history of a PowerShell process, written when the process exits
+     - ProcessRollup2: the process execution event, including parent process information
+  2. **Correlates via selfJoinFilter**:
      - Joins on aid + TargetProcessId
-     - Ensures both events present
-  5. **Groups results**:
-     - One result per PowerShell process
-     - Includes all commands executed
+     - Keeps only processes for which both events are present
+  3. **Processes each event type**:
+     - CommandHistory: splits the multi-command history field (separator: ¶) and reassembles it with newlines into CommandHistoryClean
+     - ProcessRollup2: builds an ExecutionChain string, e.g. `cmd.exe → powershell.exe (PID: 1234)`
+  4. **Groups results**:
+     - One row per PowerShell process (aid + TargetProcessId)
+     - Each row shows the host, the execution chain, and the full cleaned command history
+
+  ## Required Telemetry
+  Falcon sensor endpoint telemetry on Windows hosts. CommandHistory is emitted at process termination, so long-running PowerShell consoles only appear after they close.
+
+  ## Interpreting Results
+  The ExecutionChain shows what spawned the PowerShell session. Unusual parents (Office applications, browsers, java.exe, wscript.exe) combined with suspicious commands in the history are the main hunting signal.
+
+  ## False Positives and Tuning
+  Most results will be legitimate administrator and automation activity. To reduce noise:
+  - Filter on suspicious parents, e.g. add `ParentBaseFileName=/^(winword|excel|outlook|mshta|wscript)\.exe$/i` to the ProcessRollup2 case
+  - Search the history for keywords, e.g. append `| CommandHistoryClean=/downloadstring|invoke-webrequest|frombase64string/i`
+  - Exclude known management hosts or service accounts as needed
