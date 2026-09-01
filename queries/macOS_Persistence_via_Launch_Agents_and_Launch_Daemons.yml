@@ -1,0 +1,45 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: "macOS Persistence via Launch Agents and Launch Daemons"
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - "T1543.001"
+  - "T1543.004"
+
+# Description of what the query does and its purpose.
+description: "Hunts for persistence being established on macOS hosts, either through plist files written to LaunchAgents or LaunchDaemons directories or through launchctl loading a job into launchd."
+
+# The author or team that created the query.
+author: "ByteRay GmbH"
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules:
+  - Insight
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+cql: |
+  #event_simpleName=/(^ProcessRollup2$|Written$)/ event_platform=Mac
+  | case {
+      #event_simpleName=/Written$/ TargetFileName=/^\/(Library\/Launch(Agents|Daemons)|Users\/[^\/]+\/Library\/LaunchAgents)\// | SignalType:="Plist written to launchd directory";
+      #event_simpleName=ProcessRollup2 ImageFileName=/\/launchctl$/ CommandLine=/\b(load|bootstrap)\b/i | SignalType:="launchctl load or bootstrap";
+    }
+  | groupBy([ComputerName, SignalType, TargetFileName, ImageFileName, CommandLine, ParentBaseFileName], function=[max(@timestamp, as=LastSeen), collect([UserName], limit=5)], limit=1000)
+  | formatTime("%Y-%m-%d %H:%M:%S", field=LastSeen, as=LastSeen)
+  | sort(LastSeen, order=desc)
+
+# Explanation of the query. Uses markdown for formatting on the webpage.
+explanation: |
+  **What it looks for:** the two most common ways persistence lands on macOS. First, a property list file being written into one of the real launchd locations: /Library/LaunchAgents, /Library/LaunchDaemons or a per-user ~/Library/LaunchAgents directory. The path regex is anchored to the filesystem root on purpose, so plists inside app bundles or cache directories (for example update stagings under /Library/Caches) do not match, since launchd never reads those. Second, launchctl being invoked with load or bootstrap to register a job with launchd. The case statement labels each hit with its SignalType, and the groupBy collapses duplicate write events that macOS emits for the same file.
+
+  **Telemetry needed:** Falcon sensor on macOS with process telemetry (ProcessRollup2) and file write telemetry (the *Written event family).
+
+  **False positives / tuning:** legitimate software registers launch items constantly; expect Zoom and Microsoft updaters, MDM agents and the Falcon sensor itself. Tune by excluding known ParentBaseFileName values or by allowlisting expected plist name prefixes in TargetFileName and CommandLine (com.microsoft., us.zoom., com.crowdstrike.). For a stricter detection variant, keep only writes to the per-user LaunchAgents path combined with an unusual writing process.
