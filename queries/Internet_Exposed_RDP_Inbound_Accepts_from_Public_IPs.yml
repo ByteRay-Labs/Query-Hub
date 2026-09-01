@@ -1,0 +1,46 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: "Internet-Exposed RDP - Inbound Accepts from Public IPs"
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - "T1133"
+  - "T1021.001"
+
+# Description of what the query does and its purpose.
+description: "Identifies hosts that accepted inbound RDP connections (port 3389) from public, non RFC1918 source addresses, indicating RDP exposure to the internet or brute force activity against it."
+
+# The author or team that created the query.
+author: "ByteRay GmbH"
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+  - Network
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+  - Monitoring
+
+cs_required_modules:
+  - Insight
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+cql: |
+  #event_simpleName=NetworkReceiveAcceptIP4 event_platform=Win
+  | LocalPort=3389
+  // Drop private, loopback, link-local and CGNAT source ranges
+  | !cidr(RemoteAddressIP4, subnet=["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "169.254.0.0/16", "100.64.0.0/10"])
+  | groupBy([ComputerName, aip], function=[count(as=TotalAccepts), count(RemoteAddressIP4, distinct=true, as=UniqueRemoteIPs), collect([RemoteAddressIP4], limit=20), max(@timestamp, as=LastSeen)])
+  | formatTime("%Y-%m-%d %H:%M:%S", field=LastSeen, as=LastSeen)
+  | sort(UniqueRemoteIPs, order=desc, limit=200)
+
+# Explanation of the query. Uses markdown for formatting on the webpage.
+explanation: |
+  **What it looks for:** NetworkReceiveAcceptIP4 events where a Windows host completed an inbound TCP connection on port 3389 and the source address is not in a private, loopback, link-local or carrier-grade NAT range. Results are aggregated per host: total accepted connections, number of unique public source IPs, a sample of those IPs and the last time it happened. A single host with many unique public sources is either exposed RDP under brute force or a port-forwarding rule someone forgot about.
+
+  **Telemetry needed:** Falcon sensor network telemetry on Windows (NetworkReceiveAcceptIP4).
+
+  **False positives / tuning:** jump hosts and bastion servers that legitimately serve RDP from the outside will appear; move them to an allowlist on ComputerName. Environments that route internal traffic through non RFC1918 addressing (some VPN or SD-WAN setups) need those ranges added to the cidr exclusion list. To hunt session hijacking instead of exposure, pivot from a hit into UserLogon events on the same host.
