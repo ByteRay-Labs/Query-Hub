@@ -1,0 +1,88 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: "Mail: Inbox Rule Auto-Forwards or Hides Messages (Potential BEC Persistence)"
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - "T1114.003"
+
+# Description of what the query does and its purpose.
+description: "Flags newly created or modified Exchange Online inbox rules that forward mail to another domain or internally, silently delete it, move it out of the inbox, or single out password, security or payment related mail, and risk-ranks each one."
+
+# The author or team that created the query.
+author: "ByteRay GmbH"
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Mail
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+  - Monitoring
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+cql: |
+  #event.dataset=m365.exchange
+  | #Vendor=microsoft
+  | #event.outcome=success
+  | event.action=/^(New|Set)-InboxRule$/
+  | ForwardTo := Vendor.Parameters.ForwardTo
+  | ForwardAsAttachmentTo := Vendor.Parameters.ForwardAsAttachmentTo
+  | RedirectTo := Vendor.Parameters.RedirectTo
+  | BlindCopyTo := Vendor.Parameters.BlindCopyTo
+  | DeleteMessage := Vendor.Parameters.DeleteMessage
+  | MoveToFolder := Vendor.Parameters.MoveToFolder
+  | FromCondition := Vendor.Parameters.From
+  | SentToCondition := Vendor.Parameters.SentTo
+  | SubjectCondition := Vendor.Parameters.SubjectContainsWords
+  // Set-InboxRule carries the rule name in Identity, New-InboxRule in Name
+  | RuleName := coalesce([Vendor.Parameters.Name, Vendor.Parameters.Identity])
+  // Vendor.MailboxAlias is usually the mailbox GUID but sometimes a full legacy path ending in that GUID
+  | regex("(?<MailboxId>[0-9a-fA-F-]{36})$", field=Vendor.MailboxAlias, strict=false)
+  // Any of the four forwarding mechanisms counts as a forward target
+  | ForwardTarget := coalesce([ForwardTo, ForwardAsAttachmentTo, RedirectTo, BlindCopyTo])
+  // Compare the forward target's domain with the acting mailbox's domain
+  | regex("@(?<ActorDomain>[^@]+)$", field=user.name, strict=false)
+  | regex("@(?<ForwardDomain>[^@;,\\s\\]>]+)", field=ForwardTarget, strict=false)
+  | lowercase("ActorDomain")
+  | lowercase("ForwardDomain")
+  | case {
+      ForwardTarget=* | test(ForwardDomain != ActorDomain) | RiskLevel := "High, forwards mail to a recipient in another domain";
+      DeleteMessage=/(?i)^true$/ | RiskLevel := "High, silently deletes matching mail";
+      ForwardTarget=* | RiskLevel := "Medium, forwards a copy of mail to a recipient in the same domain";
+      // Rules scoped to password, sign in, security alert or payment mail are the ones BEC actors use to hide what the victim must not see
+      FromCondition=/(passw|log.?in|sign.?in|verif|authenticat|mfa|security|alert|suspicious|invoice|payment|remittance|wire|bank|iban|swift)/i
+        OR SubjectCondition=/(passw|log.?in|sign.?in|verif|authenticat|mfa|security|alert|suspicious|invoice|payment|remittance|wire|bank|iban|swift)/i
+        OR RuleName=/(passw|log.?in|sign.?in|verif|authenticat|mfa|security|alert|suspicious|invoice|payment|remittance|wire|bank|iban|swift)/i
+        | RiskLevel := "Medium, rule targets password, security or payment related mail";
+      MoveToFolder=* | RiskLevel := "Review, moves mail out of the inbox, folder name may not reflect intent";
+      // Set-InboxRule only logs the parameters that were changed, so a condition-only edit hides the rule's action
+      event.action=Set-InboxRule | RiskLevel := "Review, existing rule modified, its action is not part of this event";
+      * | RiskLevel := "Review, other inbox rule change"
+    }
+  | table([@timestamp, user.name, MailboxId, source.ip, event.action, RuleName, FromCondition, SentToCondition, SubjectCondition, ForwardTarget, DeleteMessage, MoveToFolder, RiskLevel])
+  | sort(@timestamp, order=desc, limit=1000)
+
+# Explanation of the query. Uses markdown for formatting on the webpage.
+explanation: |
+  **What it looks for:** every successful `New-InboxRule` and `Set-InboxRule` operation in the Exchange Online audit data (`event.module=m365`), with the rule's mail handling parameters pulled out individually. Each hit is risk-tagged instead of filtered:
+
+  - **High, forwards mail to a recipient in another domain:** `ForwardTo`, `ForwardAsAttachmentTo`, `RedirectTo` or `BlindCopyTo` points at a domain that differs from the acting mailbox's domain. This is the classic BEC exfiltration pattern.
+  - **High, silently deletes matching mail:** `DeleteMessage=True`.
+  - **Medium, forwards a copy to a recipient in the same domain:** usually delegation, but still worth a glance on sensitive mailboxes.
+  - **Medium, rule targets password, security or payment related mail:** the sender or subject condition or the rule name matches password, sign in, MFA, security alert, invoice or payment keywords. This is the mail a BEC actor needs the victim not to see.
+  - **Review, moves mail out of the inbox:** a `MoveToFolder` rule with no other signal. This matters more than it looks: a rule that quietly files security notifications into an unrelated folder is indistinguishable from housekeeping by folder name alone, yet it is exactly how an attacker keeps a compromised account's owner from seeing account recovery mail.
+  - **Review, existing rule modified, its action is not part of this event:** see the `Set-InboxRule` caveat below.
+
+  **Telemetry needed:** Microsoft 365 Exchange Online audit data ingested into Falcon Next-Gen SIEM through the Microsoft 365 data connector (`#event.dataset=m365.exchange`).
+
+  **Set-InboxRule caveat:** a modification event only contains the parameters that were passed in that change. Editing a rule's `From` or `SubjectContainsWords` condition produces an event with no `MoveToFolder`, `ForwardTo` or `DeleteMessage` at all, even though the rule still performs that action. Those events are tagged rather than dropped, because retargeting an existing rule's condition is a realistic second step after planting a harmless looking rule. To see the action, pivot on `MailboxId` together with `RuleName` to find the original `New-InboxRule`. Do not use `Vendor.ObjectId` for this: it holds the rule name on `New-InboxRule` but a numeric rule ID on `Set-InboxRule`. If a rule is renamed, `Vendor.Parameters.Identity` holds the old name and `Vendor.Parameters.Name` the new one.
+
+  **False positives and tuning:**
+
+  - Most inbox rules are ordinary mailbox organization, and shared or resource mailboxes (calendars, ticket queues) routinely forward copies to the people who work them.
+  - Outlook on the web saves a rule as a `New-InboxRule` followed within seconds by one or more `Set-InboxRule` events, so expect small bursts per edit. To collapse them into one row per rule, replace the `table` line with `| groupBy([MailboxId, RuleName], function=([min(@timestamp, as=FirstChange), max(@timestamp, as=LastChange), count(as=Changes), collect([user.name, event.action, FromCondition, SentToCondition, SubjectCondition, ForwardTarget, DeleteMessage, MoveToFolder, RiskLevel])]))`. This also puts the action from the `New` event next to later condition changes.
+  - The keyword branch is a generic English list. Add local language terms or the senders of your own security tooling to it.
+  - If your tenant uses several mail domains (three or four domains in one tenant is common for groups of companies), a forward between them will show as High. Either accept that or replace the comparison in the first case branch with a list of your owned domains, for example `| test(!in(ForwardDomain, values=["yourdomain.com", "yoursubsidiary.com"]))`.
