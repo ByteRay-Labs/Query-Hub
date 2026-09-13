@@ -1,0 +1,100 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: COM Hijacking via Per-User CLSID Server Registration
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1546.015
+
+# Description of what the query does and its purpose.
+description: |
+  Finds per-user (HKCU) writes to a COM CLSID server key (InprocServer32, LocalServer32 or TreatAs). A user-hive registration shadows the machine-wide COM object, so an attacker-controlled binary loads in place of the legitimate one whenever the CLSID is instantiated, with no admin rights required. This is a common persistence and defense-evasion route.
+
+# The author or team that created the query.
+author: Caio Lopes
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Registry value writes. Different tenants surface these under AsepValueUpdate
+  // or RegGenericValueUpdate; both are included so the hunt does not depend on
+  // which one your sensor emits.
+  in(#event_simpleName, values=["AsepValueUpdate", "RegGenericValueUpdate"])
+  | event_platform=Win
+
+  // Optional scoping for testing on a single host (leave unset for fleet-wide)
+  | ComputerName=?ComputerName
+
+  // The COM server keys an attacker overwrites to gain execution
+  | RegObjectName=/\\CLSID\\\{[0-9a-f-]+\}\\(InprocServer32|LocalServer32|TreatAs)/i
+
+  // Per-user hive shadows HKLM, which is the hijack pattern. Match a real user
+  // SID (S-1-5-21-...), not SYSTEM (S-1-5-18) or the service accounts (S-1-5-19/20).
+  | RegObjectName=/\\REGISTRY\\USER\\S-1-5-21-/i
+
+  // Raise fidelity on where the new server points
+  | case {
+      RegStringValue=/^(script:|https?:|\\\\)/i
+        | Reason := "COM server is a script moniker or remote path" ;
+      RegStringValue=/(\\appdata\\|\\users\\public\\|\\temp\\|\\windows\\temp\\|\\programdata\\|%temp%|%appdata%)/i
+        | Reason := "COM server in a user-writable path" ;
+      *
+        | Reason := "Per-user COM server registration (review against baseline)" ;
+    }
+
+  | table([@timestamp, ComputerName, aid, RegObjectName, RegValueName, RegStringValue, Reason], limit=200)
+  | sort(@timestamp, order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  ## What it looks for
+
+  COM objects resolve their server binary through `HKCR\CLSID\{GUID}\InprocServer32`
+  (in-process DLL), `LocalServer32` (out-of-process EXE) or `TreatAs` (redirection to
+  another CLSID). `HKCR` is a merged view of `HKLM\Software\Classes` and
+  `HKCU\Software\Classes`, and the per-user copy wins. Writing the server key under the
+  user hive therefore reassigns a COM object to an attacker binary without touching the
+  machine hive and without admin rights, and the code runs whenever something
+  instantiates that CLSID.
+
+  The query keys on registry value writes whose `RegObjectName` is a `CLSID\{GUID}`
+  server key **under a real user SID** (`\REGISTRY\USER\S-1-5-21-...`), then classifies
+  the value the server now points at: a script moniker or remote path, a user-writable
+  or temp path, or otherwise a plain per-user registration to review.
+
+  ## Telemetry and modules
+
+  - Log source: Endpoint (registry telemetry), Falcon Insight.
+  - Registry value updates arrive as `AsepValueUpdate` or `RegGenericValueUpdate`
+    depending on tenant configuration; both are queried. If your environment records
+    registry writes under a different `event_simpleName`, adjust the first filter.
+
+  ## Tuning and false positives
+
+  - Some legitimate software registers per-user COM servers. Baseline your fleet and
+    add an exclusion on the known-good `RegStringValue` paths or publisher directories.
+    The `Reason` field lets you triage the moniker/remote and user-writable cases first,
+    which are the ones worth chasing.
+  - `TreatAs` and `LocalServer32` are included because both are valid hijack points, not
+    only `InprocServer32`.
+
+  ## Note
+
+  This is a hunting query built against CrowdStrike's documented registry event schema.
+  It has not been run against a live Falcon tenant, so validate the `event_simpleName`
+  values and field names against your own registry telemetry before relying on it.

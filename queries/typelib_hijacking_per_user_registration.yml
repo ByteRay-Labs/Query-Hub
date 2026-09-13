@@ -1,0 +1,100 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: TypeLib Hijacking via Per-User Registration
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1574.008
+
+# Description of what the query does and its purpose.
+description: |
+  Finds per-user (HKCU) writes to a TypeLib platform key (win32/win64), where an attacker repoints a type library at a scriptlet, moniker or attacker-controlled path. When a program resolves that type library the attacker content runs. The Explorer TypeLib variant is a well-documented, low-noise persistence route.
+
+# The author or team that created the query.
+author: Caio Lopes
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# The CrowdStrike modules required to run this query.
+cs_required_modules:
+  - Insight
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  // Registry value writes. Different tenants surface these under AsepValueUpdate
+  // or RegGenericValueUpdate; both are included so the hunt does not depend on
+  // which one your sensor emits.
+  in(#event_simpleName, values=["AsepValueUpdate", "RegGenericValueUpdate"])
+  | event_platform=Win
+
+  // Optional scoping for testing on a single host (leave unset for fleet-wide)
+  | ComputerName=?ComputerName
+
+  // A per-user TypeLib platform key (win32/win64/win16) is where the library path lives
+  | RegObjectName=/\\TypeLib\\\{[0-9a-f-]+\}\\.+\\(win32|win64|win16)/i
+
+  // Per-user hive; match a real user SID, not SYSTEM or the service accounts
+  | RegObjectName=/\\REGISTRY\\USER\\S-1-5-21-/i
+
+  // Classify what the type library now resolves to
+  | case {
+      RegStringValue=/^(script:|https?:|moniker:|\\\\)/i
+        | Reason := "TypeLib points at a script moniker or remote path" ;
+      RegStringValue=/(\.sct|\.wsc|\.hta|\.js|\.vbs|scrobj\.dll)/i
+        | Reason := "TypeLib points at a scriptlet or script host" ;
+      RegStringValue=/(\\appdata\\|\\users\\public\\|\\temp\\|\\programdata\\|%temp%|%appdata%)/i
+        | Reason := "TypeLib points at a user-writable path" ;
+      *
+        | Reason := "Per-user TypeLib platform key modified (review against baseline)" ;
+    }
+
+  | table([@timestamp, ComputerName, aid, RegObjectName, RegValueName, RegStringValue, Reason], limit=200)
+  | sort(@timestamp, order=desc)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  ## What it looks for
+
+  A type library registration lives under `HKCR\TypeLib\{GUID}\<version>\<lcid>\win32`
+  (or `win64`/`win16`), whose default value is the path to the library that backs a COM
+  interface. Because `HKCR` merges the machine and user hives with the user copy winning,
+  writing that platform key under the user hive redirects the type library to
+  attacker-chosen content. When any program resolves the type library, that content is
+  loaded, which is why the technique is used for stealthy persistence. The Explorer
+  TypeLib hijack is the best-known instance.
+
+  The query keys on registry writes whose `RegObjectName` is a `TypeLib\{GUID}\...\win32`
+  (or `win64`/`win16`) key **under a real user SID** (`\REGISTRY\USER\S-1-5-21-...`), then
+  classifies the value it now resolves to: a script moniker or remote path, a scriptlet or
+  script host, a user-writable path, or otherwise a plain per-user modification to review.
+
+  ## Telemetry and modules
+
+  - Log source: Endpoint (registry telemetry), Falcon Insight.
+  - Registry value updates arrive as `AsepValueUpdate` or `RegGenericValueUpdate`
+    depending on tenant configuration; both are queried. Adjust the first filter if your
+    environment records registry writes under a different `event_simpleName`.
+
+  ## Tuning and false positives
+
+  - Software installers and language-pack updates can legitimately touch TypeLib keys.
+    The high-confidence rows are the script-moniker/remote and scriptlet cases; triage
+    those first via the `Reason` field, and baseline the user-writable-path case before
+    alerting on it.
+  - `win16` is included for completeness; drop it if it adds only noise in your fleet.
+
+  ## Note
+
+  This is a hunting query built against CrowdStrike's documented registry event schema.
+  It has not been run against a live Falcon tenant, so validate the `event_simpleName`
+  values and field names against your own registry telemetry before relying on it.
