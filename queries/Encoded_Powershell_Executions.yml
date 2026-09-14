@@ -1,0 +1,62 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Encoded PowerShell Command Execution
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1059.001
+  - T1027.010
+
+# Description of what the query does and its purpose.
+description: This query identifies PowerShell and pwsh executions that pass a Base64-encoded command via -EncodedCommand (or any of its accepted prefixes such as -e, -ec, -enc), decodes the payload inline and enriches the result with the executing user. Encoded commands are a common obfuscation technique used by malware loaders, offensive frameworks and living-off-the-land attacks.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+# This will be displayed in the UI to inform the user.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules:
+  - Insight
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2 ImageFileName=/\\(powershell|pwsh)\.exe$/i
+  | replace("\\^", with="", field=CommandLine, as=cmd)
+  | cmd=/\s[-\/]e(c|nc?[a-z]*)?\s+(?<b64>[A-Za-z0-9+\/=]{16,})/i
+  | decoded := base64Decode(b64, charset="UTF-16LE")
+  | join({#event_simpleName=UserIdentity}, field=[aid, AuthenticationId], include=[UserName], mode=left)
+  | table([aid, UserName, ParentImageFileName, ImageFileName, CommandLine, decoded])
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  This query uses CrowdStrike Query Language (CQL) to detect and decode encoded PowerShell commands:
+
+  1. **Event Filtering**: `#event_simpleName=ProcessRollup2 ImageFileName=/\\(powershell|pwsh)\.exe$/i`
+     - Searches ProcessRollup2 events for Windows PowerShell (`powershell.exe`) and PowerShell 7 (`pwsh.exe`), case-insensitive
+
+  2. **Caret Normalisation**: `replace("\\^", with="", field=CommandLine, as=cmd)`
+     - Removes `cmd.exe` caret escapes (e.g. `-e^n^c`) into a working copy `cmd`, so obfuscated parameter names are matched without listing every caret position in the regex. The original `CommandLine` is kept untouched for the output.
+
+  3. **Parameter Matching**: `cmd=/\s[-\/]e(c|nc?[a-z]*)?\s+(?<b64>[A-Za-z0-9+\/=]{16,})/i`
+     - PowerShell accepts any unambiguous prefix of `-EncodedCommand`. The pattern matches `-e`, `-ec`, `-enc`, `-encoded`, `-encodedcommand` and the `/` parameter prefix, while excluding `-ex`/`-ep` (ExecutionPolicy)
+     - Captures the following Base64 argument into the field `b64`
+
+  4. **Payload Decoding**: `decoded := base64Decode(b64, charset="UTF-16LE")`
+     - PowerShell encodes commands as UTF-16LE. Decoding inline saves the round trip to an external tool during triage
+
+  5. **User Context**: `join({#event_simpleName=UserIdentity}, field=[aid, AuthenticationId], include=[UserName], mode=left)`
+     - Enriches results with the executing user. The key is `[aid, AuthenticationId]` because logon IDs are only unique per host. `mode=left` keeps hits even when no matching UserIdentity event exists in the search window
+
+  6. **Output**: `table([aid, UserName, ParentImageFileName, ImageFileName, CommandLine, decoded])`
+     - Displays the parent process, the original command line and the decoded payload for analysis
