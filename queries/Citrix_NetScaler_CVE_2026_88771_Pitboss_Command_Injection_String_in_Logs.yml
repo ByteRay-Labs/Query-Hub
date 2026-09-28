@@ -1,0 +1,62 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: "Citrix NetScaler - CVE-2026-88771 Pitboss Command-Injection String in Logs"
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - "T1190"
+  - "T1059.004"
+  - "T1027.010"
+
+# Description of what the query does and its purpose.
+description: "CVE-2026-88771 is a pre-auth command injection in ns_monuploadd_err.pl. The script greps logs\n  for 'pitboss.*PPE.*(missed too many heartbeats|unexpectedly died)', extracts a core-file name\n  with sed/awk without validation, and interpolates it into a backtick find command as root.\n  Any attacker-controlled logged value (login field, User-Agent, parameters) can carry the\n  payload, so every exploit attempt must leave a line matching that grep. This query applies the\n  exact grep and scores lines that deviate from a legitimate pitboss crash record."
+
+# The author or team that created the query.
+author: "Travis Baldwin"
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Network
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+  - Monitoring
+  - Detection
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+cql: |
+  #Vendor=citrix #event.module=adc
+    | @rawstring=/pitboss.*PPE.*(missed too many heartbeats|unexpectedly died)/iF
+    | case {
+        @rawstring=/\$\{?IFS|b64decode|base64/iF
+          | ioc.match := "IFS/base64 space-evasion payload" | ioc.score := 100 ;
+        @rawstring=/NSPPE[^\s(]*[;`|&$]/iF
+          | ioc.match := "shell metacharacter after NSPPE token" | ioc.score := 95 ;
+        @rawstring=/(login req|authenticate user|AAAD RESP|user:\s*<|User-?Agent|Browser_type|Username)/iF
+          | ioc.match := "crash string inside auth/header field" | ioc.score := 85 ;
+        @rawstring!=/pitboss.*NSPPE-\d{2}\s*\(\d+\).*(missed too many heartbeats|unexpectedly died)/F
+          | ioc.match := "malformed crash record (fails patched-parser regex)" | ioc.score := 70 ;
+        * | ioc.match := "well-formed PPE crash record" | ioc.score := 10 ;
+    }
+    | regex("(?:Client[_ ]?ip|ClientIP|Source|Remote_?ip)\s*:?\s*(?<ns.client_ip>\d{1,3}(?:\.\d{1,3}){3})", field=@rawstring, flags=i, strict=false)
+    | regex("(?<ns.payload>pitboss.{0,200})", field=@rawstring, flags=i, strict=false)
+    | ns.host := coalesce([log.syslog.hostname, host.name, observer.hostname, host.hostname])
+    | ns.client_ip := coalesce([ns.client_ip, source.ip, client.ip])
+    | default(field=[ns.host, ns.client_ip], value="-", replaceEmpty=true)
+    | dataset := #event.dataset
+    | groupBy([ns.host, dataset, ioc.match], function=[count(as=Events), max(ioc.score, as=Score), min(@timestamp, as=FirstSeen), max(@timestamp, as=LastSeen), collect([ns.client_ip], limit=50), selectLast([ns.payload])], limit=max)
+    | formatTime("%F %T %Z", field=FirstSeen, as=FirstSeen)
+    | formatTime("%F %T %Z", field=LastSeen, as=LastSeen)
+    | table([Score, ns.host, dataset, ioc.match, Events, FirstSeen, LastSeen, ns.client_ip, ns.payload], limit=1000, sortby=Score, order=desc)
+
+# Explanation of the query. Uses markdown for formatting on the webpage.
+explanation: |
+  Score >= 70 means an exploit string was logged; treat as probable compromise because the
+    payload executes on the next ns_monuploadd_err.pl run (up to ~24h later) regardless of an
+    observed crash. Space-free payloads (${IFS}, base64) are expected because awk splits on
+    whitespace. Score 10 rows are well-formed PPE crash records - context for CVE-2026-88772 and
+    the DoS CVEs, not exploitation. nsaaad lines often lack a client IP; pivot on timestamp to
+    adjacent adc.sslvpn / adc.aaatm lines. Requires local0 and local1 syslog facilities forwarded.
+    False positives: none expected at >= 85; 70 may catch unusual firmware log formats.
