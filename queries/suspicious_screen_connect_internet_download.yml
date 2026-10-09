@@ -1,4 +1,4 @@
-name: Suspicious Screen Connect Internet Download
+name: Suspicious Screen Connect Internet Download 
 
 mitre_ids:
   - T1219
@@ -10,7 +10,7 @@ mitre_ids:
   - T1197
 
 description: |
-  Detects ScreenConnect.ClientService.exe first seen in the last 7 days with a rare relay host (seen on 3 or fewer endpoints). It only alerts when a MOTW write of an exe, msi, bat, cmd or ps1 from a rare domain landed up to 1 hour before the first execution. A download-capable LOLBin (PowerShell, curl, msiexec, certutil, mshta) pulling a remote URL in that window adds to the score. Hosts are risk-scored and labeled Suspicious or Malicious.
+  Detects ScreenConnect.ClientService.exe first seen in the last 7 days with a rare relay host (seen on 3 or fewer endpoints). It only alerts when a MOTW write of an exe, msi, bat, cmd or ps1 from a rare domain landed up to 1 hour before the first execution. A download-capable LOLBin (PowerShell, curl, msiexec, certutil, mshta) pulling a remote URL within ±1 hour of the first execution adds to the score. Hosts are risk-scored and labeled Suspicious or Malicious.
 
 author: Nicholas Yovanovich
 
@@ -191,7 +191,7 @@ cql: |
   ], limit=1000, sortby=RiskScore, order=desc)
 
 explanation: |
-  Looks for ScreenConnect.ClientService.exe first seen in the last 7 days whose relay host (h= in the command line) is on 3 or fewer endpoints. It then requires a MOTW write of an exe, msi, bat, cmd or ps1 from a domain seen on 5 or fewer endpoints, landing up to 1 hour before that first execution (5 minutes of clock-skew allowance after). Instances without that MOTW download are not returned. A download-capable process (msiexec, PowerShell, curl, wget, certutil, bitsadmin, wscript, cscript, mshta) pulling a remote URL within ±1 hour only adds to the score. They get a risk score (relay rarity, MOTW, script download, dropper type), and 60 or more is labeled Malicious.
+  Looks for ScreenConnect.ClientService.exe first seen in the last 7 days whose relay host (h= in the command line) is on 3 or fewer endpoints. It then requires a MOTW write of an exe, msi, bat, cmd or ps1 from a domain seen on 5 or fewer endpoints, landing up to 1 hour before that first execution (5 minutes of clock-skew allowance after). Instances without that MOTW download are not returned. A download-capable process (msiexec, PowerShell, curl, wget, certutil, bitsadmin, wscript, cscript, mshta) pulling a remote URL within ±1 hour only adds to the score. Matching hosts get a risk score (relay rarity, MOTW, script download, dropper type), and 60 or more is labeled Malicious.
 
   Telemetry: Falcon ProcessRollup2 (Windows) for the ScreenConnect service and the dropper processes, and MotwWritten for browser downloads.
 
