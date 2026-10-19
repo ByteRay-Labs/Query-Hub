@@ -1,0 +1,204 @@
+name: Suspicious ScreenConnect Internet Download
+
+mitre_ids:
+  - T1219
+  - T1105
+  - T1204.002
+  - T1218.005
+  - T1059.001
+  - T1218.007
+  - T1197
+
+description: |
+  Detects ScreenConnect.ClientService.exe first seen in the last 7 days with a rare relay host (seen on 3 or fewer endpoints). It only alerts when a MOTW write of an exe, msi, bat, cmd or ps1 from a rare domain landed up to 1 hour before the first execution. A download-capable LOLBin (PowerShell, curl, msiexec, certutil, mshta) pulling a remote URL within ±1 hour of the first execution adds to the score. Hosts are risk-scored and labeled Suspicious or Malicious.
+
+author: Nicholas Yovanovich
+
+log_sources:
+  - Endpoint
+
+cs_required_modules:
+  - Insight
+
+tags:
+  - Hunting
+  - Detection
+
+cql: |
+  #event_simpleName=ProcessRollup2 event_platform=Win
+  | ImageFileName=/\\ScreenConnect\.ClientService\.exe$/i
+  | CommandLine=/[?&]h=(?<RelayHost>[^&"'\s]+)/i
+  | case { CommandLine=/[?&]p=(?<RelayPort>[^&"'\s]+)/i ; * | RelayPort := "-" ; }
+  | case { CommandLine=/[?&]y=(?<SessionType>[^&"'\s]+)/i ; * | SessionType := "-" ; }
+  | case { CommandLine=/[?&]e=(?<SessionMode>[^&"'\s]+)/i ; * | SessionMode := "-" ; }
+  | FilePath=/ScreenConnect Client \((?<InstanceID>[a-f0-9]+)\)/i
+  | RelayHost := lower(RelayHost)
+  // Add your known relay hosts:
+  // Example: | RelayHost!=/(^|\.)(maliciousdomain\.com|example\.org|vendor\.net)$/
+  // Dedupe: one row per host + instance + relay (each service restart is its own ProcessRollup2)
+  | groupBy([aid, InstanceID, RelayHost], function=[
+  max(@timestamp, as=@timestamp),
+  min(@timestamp, as=InstanceFirstSeen),
+  max(@timestamp, as=InstanceLastSeen),
+  count(as=TotalExecutions),
+  count(SHA256HashData, distinct=true, as=DistinctHashes),
+  selectLast([ComputerName, UserName, RelayPort, SessionType, SessionMode, ParentBaseFileName, GrandParentBaseFileName, SHA256HashData])
+  ], limit=max)
+  | now(as=_now)
+  | test(InstanceFirstSeen >= _now - 604800000)
+  // Relay prevalence across the fleet
+  | join(
+  query={
+  #event_simpleName=ProcessRollup2 event_platform=Win
+  | ImageFileName=/\\ScreenConnect\.ClientService\.exe$/i
+  | CommandLine=/[?&]h=(?<RelayHost>[^&"'\s]+)/i
+  | RelayHost := lower(RelayHost)
+  | groupBy([RelayHost], function=count(aid, distinct=true, as=RelayHostCount), limit=max)
+  },
+  field=RelayHost,
+  include=[RelayHostCount]
+  )
+  | RelayHostCount <= 3
+  // Rare-domain MOTW download on the host, in the window around the host's first ScreenConnect execution
+  | join(
+  query={
+  #event_simpleName=MotwWritten event_platform=Win
+  | FileName=/\.(msi|exe|bat|cmd|ps1)$/i OR TargetFileName=/\.(msi|exe|bat|cmd|ps1)$/i
+  | HostUrl=/^https?:\/\//i
+  | HostUrl!=/[&?]e=Support/i
+  | join(
+  query={
+  #event_simpleName=ProcessRollup2 event_platform=Win
+  | ImageFileName=/\\ScreenConnect\.ClientService\.exe$/i
+  | groupBy([aid], function=min(@timestamp, as=ScFirstSeen), limit=max)
+  },
+  field=aid,
+  include=[ScFirstSeen]
+  )
+  // up to 1h before first execution, 5m clock-skew allowance after
+  | test(@timestamp >= ScFirstSeen - 3600000)
+  | test(@timestamp <= ScFirstSeen + 300000)
+  | regex("^https?://(?<HostUrlDomain>[^/:?#]+)", field=HostUrl, strict=true)
+  | HostUrlDomain := lower(HostUrlDomain)
+  // Add your known download domains:
+  // Example: | HostUrlDomain!=/(^|\.)(example\.org|vendor\.net)$/
+  | join(
+  query={
+  #event_simpleName=MotwWritten event_platform=Win
+  | regex("^https?://(?<HostUrlDomain>[^/:?#]+)", field=HostUrl, strict=true)
+  | HostUrlDomain := lower(HostUrlDomain)
+  | groupBy([HostUrlDomain], function=count(aid, distinct=true, as=DomainHostCount), limit=max)
+  },
+  field=HostUrlDomain,
+  include=[DomainHostCount]
+  )
+  | DomainHostCount <= 5
+  | groupBy([aid], function=[
+  selectLast([HostUrl, ReferrerUrl, FileName, DomainHostCount]),
+  max(@timestamp, as=LastMOTWTime),
+  count(as=TotalMOTWWrites)
+  ], limit=max)
+  | rename(field=HostUrl, as=DownloadHostUrl)
+  | rename(field=ReferrerUrl, as=DownloadReferrerUrl)
+  | rename(field=FileName, as=DownloadFileName)
+  },
+  field=aid,
+  include=[DownloadHostUrl, DownloadReferrerUrl, DownloadFileName, DomainHostCount, TotalMOTWWrites, LastMOTWTime]
+  )
+  | HasMOTW := "true"
+  // Dropper activity on the host within ±1h of its first ScreenConnect execution
+  | join(
+  query={
+  #event_simpleName=ProcessRollup2 event_platform=Win
+  | ImageFileName=/\\(curl|powershell|pwsh|bitsadmin|certutil|wget|msiexec|wscript|cscript|mshta)\.exe$/i
+  | join(
+  query={
+  #event_simpleName=ProcessRollup2 event_platform=Win
+  | ImageFileName=/\\ScreenConnect\.ClientService\.exe$/i
+  | groupBy([aid], function=min(@timestamp, as=ScFirstSeen), limit=max)
+  },
+  field=aid,
+  include=[ScFirstSeen]
+  )
+  | test(@timestamp >= ScFirstSeen - 3600000)
+  | test(@timestamp <= ScFirstSeen + 3600000)
+  | case {
+  ImageFileName=/\\msiexec\.exe$/i
+  | CommandLine=/https?:\/\/.+(ScreenConnect|\.msi)/i
+  | DropperType := "MSIEXEC_REMOTE_URL" ;
+  ImageFileName=/\\(curl|wget)\.exe$/i
+  | CommandLine=/(ScreenConnect|\.msi)/i
+  | CommandLine=/https?:\/\//i
+  | DropperType := "CURL_WGET_DOWNLOAD" ;
+  ImageFileName=/\\(powershell|pwsh)\.exe$/i
+  | CommandLine=/(ScreenConnect|\.msi)/i
+  | CommandLine=/https?:\/\//i
+  | DropperType := "POWERSHELL_DOWNLOAD" ;
+  ImageFileName=/\\(bitsadmin|certutil)\.exe$/i
+  | CommandLine=/(ScreenConnect|\.msi)/i
+  | CommandLine=/https?:\/\//i
+  | DropperType := "LOLBIN_DOWNLOAD" ;
+  ImageFileName=/\\(wscript|cscript)\.exe$/i
+  | CommandLine=/\.(vbs|js|wsf)/i
+  | CommandLine=/https?:\/\//i
+  | DropperType := "SCRIPT_DROPPER" ;
+  ImageFileName=/\\mshta\.exe$/i
+  | CommandLine=/https?:\/\//i
+  | CommandLine!=/about:blank/i
+  | DropperType := "MSHTA_DROPPER" ;
+  }
+  | groupBy([aid], function=[
+  selectLast([CommandLine, ImageFileName, DropperType]),
+  max(@timestamp, as=LastDropperTime),
+  count(as=DropperExecutions)
+  ], limit=max)
+  | rename(field=CommandLine, as=DropperCommandLine)
+  | rename(field=ImageFileName, as=DropperProcess)
+  },
+  field=aid,
+  include=[DropperCommandLine, DropperProcess, DropperType, DropperExecutions, LastDropperTime],
+  mode=left
+  )
+  | case { LastDropperTime=* | HasDropper := "true" ; * | HasDropper := "false" ; }
+  // Scoring
+  | case { RelayHostCount=1 | RarityScore := 20 ; * | RarityScore := 10 ; }
+  | MOTWScore := 25
+  | case { DownloadFileName=/\.(bat|cmd|ps1)$/i | ScriptScore := 20 ; * | ScriptScore := 0 ; }
+  | case {
+  DropperType="MSIEXEC_REMOTE_URL" | DropperScore := 40 ;
+  DropperType=/^(POWERSHELL_DOWNLOAD|LOLBIN_DOWNLOAD|SCRIPT_DROPPER|MSHTA_DROPPER)$/ | DropperScore := 35 ;
+  DropperType="CURL_WGET_DOWNLOAD" | DropperScore := 30 ;
+  * | DropperScore := 0 ;
+  }
+  | RiskScore := RarityScore + MOTWScore + ScriptScore + DropperScore
+  | case { RiskScore >= 60 | Verdict := "MALICIOUS" ; * | Verdict := "SUSPICIOUS" ; }
+  // Time formatting: Pacific and Eastern (IANA zones handle PST/PDT and EST/EDT automatically)
+  | InstanceFirstSeenPST := formatTime("%Y-%m-%d %H:%M:%S", field=InstanceFirstSeen, timezone="America/Los_Angeles")
+  | InstanceFirstSeenEST := formatTime("%Y-%m-%d %H:%M:%S", field=InstanceFirstSeen, timezone="America/New_York")
+  | InstanceLastSeenPST := formatTime("%Y-%m-%d %H:%M:%S", field=InstanceLastSeen, timezone="America/Los_Angeles")
+  | InstanceLastSeenEST := formatTime("%Y-%m-%d %H:%M:%S", field=InstanceLastSeen, timezone="America/New_York")
+  | LastMOTWTimePST := formatTime("%Y-%m-%d %H:%M:%S", field=LastMOTWTime, timezone="America/Los_Angeles")
+  | LastMOTWTimeEST := formatTime("%Y-%m-%d %H:%M:%S", field=LastMOTWTime, timezone="America/New_York")
+  | LastDropperTimePST := formatTime("%Y-%m-%d %H:%M:%S", field=LastDropperTime, timezone="America/Los_Angeles")
+  | LastDropperTimeEST := formatTime("%Y-%m-%d %H:%M:%S", field=LastDropperTime, timezone="America/New_York")
+  | default(value="-", field=[DownloadHostUrl, DownloadReferrerUrl, DownloadFileName, LastDropperTimePST, LastDropperTimeEST, DropperProcess, DropperCommandLine, DropperType, SessionType, SessionMode, RelayPort])
+  | default(value=0, field=[DropperExecutions])
+  | table([
+  @timestamp, aid, ComputerName, UserName, InstanceID, RelayHost, RelayHostCount, RelayPort, SessionType, SessionMode,
+  InstanceFirstSeenPST, InstanceFirstSeenEST, InstanceLastSeenPST, InstanceLastSeenEST, TotalExecutions, DistinctHashes,
+  DownloadFileName, DownloadHostUrl, DownloadReferrerUrl, DomainHostCount, TotalMOTWWrites, LastMOTWTimePST, LastMOTWTimeEST,
+  DropperProcess, DropperCommandLine, DropperType, DropperExecutions, LastDropperTimePST, LastDropperTimeEST,
+  HasMOTW, HasDropper, RiskScore, Verdict,
+  ParentBaseFileName, GrandParentBaseFileName, SHA256HashData
+  ], limit=1000, sortby=RiskScore, order=desc)
+
+explanation: |
+  Looks for ScreenConnect.ClientService.exe first seen in the last 7 days whose relay host (h= in the command line) is on 3 or fewer endpoints. It then requires a MOTW write of an exe, msi, bat, cmd or ps1 from a domain seen on 5 or fewer endpoints, landing up to 1 hour before that first execution (5 minutes of clock-skew allowance after). Instances without that MOTW download are not returned. A download-capable process (msiexec, PowerShell, curl, wget, certutil, bitsadmin, wscript, cscript, mshta) pulling a remote URL within ±1 hour only adds to the score. Matching hosts get a risk score (relay rarity, MOTW, script download, dropper type), and 60 or more is labeled Malicious.
+
+  Telemetry: Falcon ProcessRollup2 (Windows) for the ScreenConnect service and the dropper processes, and MotwWritten for browser downloads.
+
+  False positives: legitimate MSP or vendor ScreenConnect deployments, since a rare relay is expected there. IT staff installing ScreenConnect by hand or through scripts. Software installs from small internal or niche vendor domains. Ad-hoc support sessions are already excluded with the e=Support filter.
+
+  Tuning: Add your known-good relay hosts and download domains to the commented exclusion lines (RelayHost and HostUrlDomain). Raise or lower the RelayHostCount (3) and DomainHostCount (5) thresholds to match your fleet size. Widen or narrow the ±1 hour correlation window and the 7-day lookback. Run it over a search window clearly longer than 7 days (30 days works well), otherwise every instance looks first seen and the relay and domain prevalence counts are based on too little data. Adjust the score weights and the 60-point Malicious cutoff if the verdicts run too noisy or too quiet.
+
+  Requirements: The query needs MotwWritten telemetry. The MOTW join is required, so in an environment that does not send MotwWritten to NG-SIEM it returns nothing without any error. Check coverage first with `#event_simpleName=MotwWritten | count(aid, distinct=true)`. On small fleets (around 150 hosts or fewer) almost every download domain falls under the DomainHostCount threshold, including large vendors such as github.com or download.microsoft.com, so the query's selectivity comes mainly from the time window around the first ScreenConnect execution. Consider an allowlist of known vendor download domains there.
