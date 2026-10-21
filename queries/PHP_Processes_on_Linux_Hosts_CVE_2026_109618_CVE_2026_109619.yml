@@ -1,0 +1,47 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: PHP Processes on Linux Hosts (CVE-2026-109618, CVE-2026-109619)
+
+# MITRE ATT&CK technique IDs
+#mitre_ids:
+
+# Description of what the query does and its purpose.
+description: |
+  Lists Linux hosts that ran a PHP interpreter (CLI, php-fpm, php-cgi, lsphp) in the search window, with the binary path and last execution. Scoping list for the php2shell vulnerabilities.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules:
+  - Insight
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  #event_simpleName=ProcessRollup2 event_platform=Lin
+  | FileName=/^(php(-fpm|-cgi)?[0-9.]*|lsphp[0-9.]*)$/i    // add other PHP SAPIs used in your environment
+  | groupBy([aid, ImageFileName], function=[count(as=Executions), max(@timestamp, as=LastSeen)], limit=max)
+  | match(file="aid_master_main.csv", field=aid, include=[ComputerName], strict=false)
+  | LastSeen := formatTime("%Y-%m-%d %H:%M:%S", field=LastSeen)
+  | table([ComputerName, aid, ImageFileName, Executions, LastSeen], limit=20000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  **What it looks for:** `ProcessRollup2` events on Linux where `FileName` matches a PHP binary: `php`, `php-fpm`, `php-cgi` or `lsphp`, with or without a version suffix such as `php-fpm8.3` or `php82`. One row per host and `ImageFileName`, so a host running two PHP branches shows up twice.
+
+  **Telemetry needed:** Falcon sensor process telemetry, Linux only. `ComputerName` comes from `aid_master_main.csv`.
+
+  **False positives / tuning:** Build hosts and CI runners that only use the PHP CLI also appear. Filter them out on `ImageFileName` or keep only `php-fpm`, `php-cgi` and `lsphp` if you care about web-facing workers. PHP loaded as an Apache module (`mod_php`) runs inside `httpd`/`apache2` and is not caught here.
+
+  **Notes:** The path often shows the branch (Debian/Ubuntu `php-fpm8.2`, Remi `/opt/remi/php83/`), never the patch level. Check the installed version on the host or in Spotlight before marking a system as fixed. [CERT-EU Advisory 2026-018](https://cert.europa.eu/publications/security-advisories/2026-018)
