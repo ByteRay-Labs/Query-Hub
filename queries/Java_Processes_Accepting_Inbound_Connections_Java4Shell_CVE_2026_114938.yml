@@ -1,0 +1,100 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Java Processes Accepting Inbound Connections (Java4Shell, CVE-2026-114938)
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1190
+
+# Description of what the query does and its purpose.
+description: |
+  Lists individual Java processes on Linux and Windows that accepted inbound connections, with path, command line, service ports and peer counts, to rank exposure to Java4Shell (CVE-2026-114938) per JVM.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules:
+  - Insight
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  (#event_simpleName=ProcessRollup2 FileName=/^javaw?(\.exe)?$/i) OR (#event_simpleName=/^(Synthetic)?SharedObjectLoaded$/ TargetFileName=/\/libjvm\.so$/ ImageFileName=/\/java$/) OR (#event_simpleName=NetworkReceiveAcceptIP4 ContextBaseFileName=/^javaw?(\.exe)?$/i)
+  | event_platform=/^(Lin|Win)$/
+  // one key per JVM: TargetProcessId of the process start equals ContextProcessId of its connections.
+  // Linux sensors suppress repeated ProcessRollup2 events, so the libjvm.so load is used as a second source for path and command line
+  | case {
+      #event_simpleName=ProcessRollup2 | JvmId := TargetProcessId | JavaPath := ImageFileName;
+      #event_simpleName=NetworkReceiveAcceptIP4 | JvmId := ContextProcessId;
+      * | JvmId := ContextProcessId | JavaPath := ImageFileName
+    }
+  | regex("(?:java-|jdk-?|openjdk-?|corretto-|temurin-|/jre/|/java/)(?<JavaVersion>\d+(?:\.\d+)*)", field=JavaPath, strict=false)
+  | case {
+      CommandLine=/-XX:-UseBASE64Intrinsics|-XX:UseAVX=[0-2]\b/ | FlagStart := 1;
+      *
+    }
+  | case {
+      #event_simpleName=NetworkReceiveAcceptIP4 | !cidr(RemoteAddressIP4, subnet=["127.0.0.0/8"]) | InboundPeer := RemoteAddressIP4;
+      *
+    }
+  // ports below 32768 only, to keep ephemeral ports out of the list
+  | case {
+      InboundPeer=* | test(LocalPort<32768) | ServicePort := LocalPort;
+      *
+    }
+  // adjust to your environment: add internal ranges that are not RFC 1918
+  | case {
+      InboundPeer=* | !cidr(InboundPeer, subnet=["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10"]) | PublicPeer := InboundPeer;
+      *
+    }
+  | groupBy([aid, JvmId], function=[selectLast([ComputerName, JavaPath, JavaVersion, CommandLine, FlagStart]), count(InboundPeer, as=InboundConns), count(PublicPeer, distinct=true, as=PublicPeers), collect(ServicePort, limit=20)], limit=max)
+  // only JVMs that accepted at least one connection; Java starts without traffic are dropped
+  | InboundConns>0
+  // Java 8 and 11 are not affected; only dropped when the version is part of the path
+  | JavaVersion!=/^(1\.8|8|11)(\.|$)/
+  | join(query={#event_simpleName=SystemCapacity | groupBy([aid], function=selectLast([CpuVendor, CpuProcessorName]), limit=max)}, field=aid, include=[CpuVendor, CpuProcessorName], mode=left)
+  // CpuVendor 2 = Apple, 3 = ARM64; the bug only exists on x86-64
+  | CpuVendor!=2 CpuVendor!=3
+  // heuristic by model name (Xeon Ice Lake and later, EPYC 9xxx, 11th Gen Core); extend for your hardware
+  | case {
+      CpuProcessorName=/Xeon.*(Platinum|Gold|Silver|Bronze) [3-8][3-5]\d\d|Xeon\(R\) 6\d{3}P|EPYC 9|11th Gen/i | CpuExposure := "AVX-512 VBMI likely";
+      * | CpuExposure := "verify manually"
+    }
+  | case {
+      PublicPeers>0 | Priority := "1 - inbound from public IPs";
+      * | Priority := "2 - inbound from internal IPs only"
+    }
+  | case {
+      JavaPath!=* | Mitigation := "unknown (no process telemetry in range)" | JavaPath := "unknown (no process telemetry in range)";
+      FlagStart=1 | Mitigation := "flag set";
+      * | Mitigation := "none"
+    }
+  // CpuModel becomes a Markdown link to a web search for the model's AVX-512 VBMI support
+  | case {
+      CpuProcessorName=* | CpuQuery := format("%s AVX-512 VBMI", field=[CpuProcessorName]) | CpuQuery := urlEncode(CpuQuery) | CpuModel := format("[%s](https://www.google.com/search?q=%s)", field=[CpuProcessorName, CpuQuery]);
+      * | CpuModel := "unknown"
+    }
+  | rename(field=ComputerName, as=Host)
+  // raise the limit (max 20000) for larger fleets
+  | table([Priority, CpuExposure, Host, JavaPath, JavaVersion, ServicePort, InboundConns, PublicPeers, Mitigation, CpuModel, CommandLine], sortby=[Priority, CpuExposure, InboundConns], order=[asc, asc, desc], limit=1000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  **What it looks for:** Inbound connections (`NetworkReceiveAcceptIP4`) whose `ContextBaseFileName` is java, keyed per process on `ContextProcessId`. Path and command line come from `ProcessRollup2` (`TargetProcessId`) or, where the Linux sensor suppressed that event, from the `libjvm.so` load in `SharedObjectLoaded` and `SyntheticSharedObjectLoaded`. The CPU model from `SystemCapacity` is joined per host because the bug needs x86-64 with AVX-512 VBMI.
+
+  **Telemetry needed:** Falcon sensor telemetry on Linux and Windows: `NetworkReceiveAcceptIP4`, `ProcessRollup2`, `SharedObjectLoaded`, `SyntheticSharedObjectLoaded`, `SystemCapacity`.
+
+  **False positives / tuning:** Behind a load balancer `RemoteAddressIP4` is internal, so priority 2 does not mean unreachable from the internet. Extend the private ranges in the `cidr()` list and the regex on `CpuProcessorName` for your environment. IPv6 connections are not counted. Rows with path `unknown` had no process telemetry in the search range.
+
+  **Notes:** `CommandLine` can contain secrets passed as JVM arguments. [Oracle CSPU November 2026](https://www.oracle.com/security-alerts/cspunov2026.html)
