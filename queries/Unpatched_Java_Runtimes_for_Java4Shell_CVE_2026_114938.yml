@@ -1,0 +1,93 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Unpatched Java Runtimes for Java4Shell (CVE-2026-114938)
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1190
+
+# Description of what the query does and its purpose.
+description: |
+  Lists Linux and Windows hosts with a Java 17, 21, 25 or 27 runtime that still lacks the fix for Java4Shell (CVE-2026-114938), from installed packages and running JVMs, with the CPU model next to each host.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules:
+  - Insight
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  (#event_simpleName=InstalledApplication AppName=/openjdk|temurin|corretto|zulu|graalvm|liberica|sapmachine|^java-\d+|Java\(TM\) SE|Java SE Development Kit|^jdk-?\d|^jre-?\d/i) OR (#event_simpleName=ProcessRollup2 FileName=/^javaw?(\.exe)?$/i)
+  | event_platform=/^(Lin|Win)$/
+  // Windows packages carry the Java version in AppName, Linux packages at the start of AppVersion, running JVMs sometimes in the path
+  | case {
+      #event_simpleName=InstalledApplication event_platform=Win | Source := "package" | Product := AppName | VersionText := format("%s %s", field=[AppName, AppVersion]) | regex("(?<JavaVersion>\d+\.\d+\.\d+(?:\.\d+)?)", field=VersionText, strict=false);
+      #event_simpleName=InstalledApplication | Source := "package" | Product := AppName | regex("^(?:\d+:)?(?<JavaVersion>\d+\.\d+\.\d+(?:\.\d+)?)", field=AppVersion, strict=false);
+      * | Source := "process" | Product := ImageFileName | regex("(?:jdk-?|openjdk-|corretto-|temurin-|zulu-?|/jre/|/java/)(?<JavaVersion>\d+\.\d+\.\d+(?:\.\d+)?)", field=ImageFileName, strict=false)
+    }
+  | regex("(?:java-|jdk-?|openjdk-?|corretto-|temurin-|zulu-?)(?<MajorOnly>\d+)", field=Product, strict=false)
+  | groupBy([aid, Source, Product], function=selectLast([ComputerName, JavaVersion, MajorOnly, UpdateFlag]), limit=max)
+  // UpdateFlag 2 = package was removed
+  | UpdateFlag!=2
+  | regex("^(?<Major>\d+)\.\d+\.(?<Update>\d+)(?:\.(?<Patch>\d+))?", field=JavaVersion, strict=false)
+  | default(field=Patch, value=0)
+  | Major := coalesce([Major, MajorOnly])
+  // last affected update per branch: 17.0.21.0, 21.0.13.0, 25.0.5.0, 27.0.1.0; fixed builds have a fourth component of 1 or higher
+  | case {
+      Major=17 | LastAffected := 21;
+      Major=21 | LastAffected := 13;
+      Major=25 | LastAffected := 5;
+      Major=27 | LastAffected := 1;
+      *
+    }
+  | case {
+      Major!=* | Status := "2 - version unknown";
+      Major<17 | Status := "not affected";
+      Major=17 Update<6 | Status := "not affected";
+      LastAffected!=* | Status := "3 - release not covered by advisories";
+      Update!=* | Status := "2 - version unknown";
+      test(Update<LastAffected) | Status := "1 - needs patch";
+      test(Update==LastAffected) | Patch=0 | Status := "1 - needs patch";
+      * | Status := "patched"
+    }
+  // confirmed vulnerable versions only; use /^[123]/ to also list hosts where the Java version cannot be read
+  | Status=/^1/
+  | join(query={#event_simpleName=SystemCapacity | groupBy([aid], function=selectLast([CpuVendor, CpuProcessorName]), limit=max)}, field=aid, include=[CpuVendor, CpuProcessorName], mode=left)
+  // CpuVendor 2 = Apple, 3 = ARM64; the bug only exists on x86-64
+  | CpuVendor!=2 CpuVendor!=3
+  // heuristic by model name (Xeon Ice Lake and later, EPYC 9xxx, 11th Gen Core); extend for your hardware
+  | case {
+      CpuProcessorName=/Xeon.*(Platinum|Gold|Silver|Bronze) [3-8][3-5]\d\d|Xeon\(R\) 6\d{3}P|EPYC 9|11th Gen/i | CpuExposure := "AVX-512 VBMI likely";
+      * | CpuExposure := "verify manually"
+    }
+  // CpuModel becomes a Markdown link to a web search for the model's AVX-512 VBMI support
+  | case {
+      CpuProcessorName=* | CpuQuery := format("%s AVX-512 VBMI", field=[CpuProcessorName]) | CpuQuery := urlEncode(CpuQuery) | CpuModel := format("[%s](https://www.google.com/search?q=%s)", field=[CpuProcessorName, CpuQuery]);
+      * | CpuModel := "unknown"
+    }
+  | rename(field=ComputerName, as=Host)
+  // raise the limit (max 20000) for larger fleets
+  | table([Status, CpuExposure, Host, Product, JavaVersion, Source, CpuModel], sortby=[Status, CpuExposure, Host], order=[asc, asc, asc], limit=1000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  **What it looks for:** Java versions from two places: installed packages (`InstalledApplication`, version from `AppName` on Windows and `AppVersion` on Linux) and running JVMs (`ProcessRollup2`, version from `ImageFileName` when the path contains one). Versions up to 17.0.21.0, 21.0.13.0, 25.0.5.0 and 27.0.1.0 get `Status` `1 - needs patch`. The CPU model from `SystemCapacity` is added because the bug needs x86-64 with AVX-512 VBMI.
+
+  **Telemetry needed:** Falcon sensor telemetry on Linux and Windows: `InstalledApplication` (only present when the tenant collects application inventory), `ProcessRollup2`, `SystemCapacity`.
+
+  **False positives / tuning:** A distribution that backports the fix without raising the fourth version component still shows as vulnerable; check the vendor advisory for that package. JVMs in container images or in paths without a version are hidden by default. Change the `Status` filter to `/^[123]/` to list them as `2 - version unknown`. The regex on `CpuProcessorName` is a heuristic.
+
+  **Notes:** Search 7 days or more so every host has reported its package inventory. [Oracle CSPU November 2026](https://www.oracle.com/security-alerts/cspunov2026.html)
