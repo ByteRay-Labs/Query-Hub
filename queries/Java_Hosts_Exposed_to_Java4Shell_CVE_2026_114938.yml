@@ -1,0 +1,97 @@
+# --- Query Metadata ---
+# Human-readable name for the query. Will be displayed as the title.
+name: Java Hosts Exposed to Java4Shell (CVE-2026-114938)
+
+# MITRE ATT&CK technique IDs
+mitre_ids:
+  - T1190
+
+# Description of what the query does and its purpose.
+description: |
+  Lists Linux and Windows hosts running Java on CPUs that likely support AVX-512 VBMI, the hardware condition for Java4Shell (CVE-2026-114938), ranked by inbound connections to the Java processes.
+
+# The author or team that created the query.
+author: ByteRay GmbH
+
+# The required log sources to run this query successfully in Next-Gen SIEM.
+log_sources:
+  - Endpoint
+
+# Tags for filtering and categorization.
+tags:
+  - Hunting
+
+cs_required_modules:
+  - Insight
+
+# --- Query Content ---
+# The actual CrowdStrike Query Language (CQL) code.
+# Using the YAML block scalar `|` allows for multi-line strings.
+cql: |
+  (#event_simpleName=ProcessRollup2 FileName=/^javaw?(\.exe)?$/i) OR (#event_simpleName=NetworkReceiveAcceptIP4 ContextBaseFileName=/^javaw?(\.exe)?$/i)
+  | event_platform=/^(Lin|Win)$/
+  | regex("(?:java-|jdk-?|openjdk-?|corretto-|temurin-|/jre/|/java/)(?<JavaVersion>\d+(?:\.\d+)*)", field=ImageFileName, strict=false)
+  // Java 8 and 11 are not affected; only dropped when the version is part of the path
+  | JavaVersion!=/^(1\.8|8|11)(\.|$)/
+  | case {
+      #event_simpleName=ProcessRollup2 | JavaPath := ImageFileName;
+      *
+    }
+  | case {
+      #event_simpleName=ProcessRollup2 CommandLine=/-XX:-UseBASE64Intrinsics|-XX:UseAVX=[0-2]\b/ | FlagStart := 1;
+      *
+    }
+  | case {
+      #event_simpleName=NetworkReceiveAcceptIP4 | !cidr(RemoteAddressIP4, subnet=["127.0.0.0/8"]) | InboundPeer := RemoteAddressIP4;
+      *
+    }
+  // ports below 32768 only, to keep ephemeral ports out of the list
+  | case {
+      InboundPeer=* | test(LocalPort<32768) | ServicePort := LocalPort;
+      *
+    }
+  // adjust to your environment: add internal ranges that are not RFC 1918
+  | case {
+      InboundPeer=* | !cidr(InboundPeer, subnet=["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10"]) | PublicPeer := InboundPeer;
+      *
+    }
+  | groupBy([aid], function=[selectLast([ComputerName]), count(JavaPath, as=JavaStarts), count(FlagStart, as=FlagStarts), count(InboundPeer, as=InboundConns), count(PublicPeer, distinct=true, as=PublicPeers), collect(ServicePort, limit=20), collect(JavaVersion, limit=10), collect(JavaPath, limit=10)], limit=max)
+  | join(query={#event_simpleName=SystemCapacity | groupBy([aid], function=selectLast([CpuVendor, CpuProcessorName]), limit=max)}, field=aid, include=[CpuVendor, CpuProcessorName], mode=left)
+  // CpuVendor 2 = Apple, 3 = ARM64; the bug only exists on x86-64
+  | CpuVendor!=2 CpuVendor!=3
+  // heuristic by model name (Xeon Ice Lake and later, EPYC 9xxx, 11th Gen Core); extend for your hardware
+  | case {
+      CpuProcessorName=/Xeon.*(Platinum|Gold|Silver|Bronze) [3-8][3-5]\d\d|Xeon\(R\) 6\d{3}P|EPYC 9|11th Gen/i | CpuExposure := "AVX-512 VBMI likely";
+      * | CpuExposure := "verify manually"
+    }
+  | case {
+      PublicPeers>0 | Priority := "1 - inbound from public IPs";
+      InboundConns>0 | Priority := "2 - inbound from internal IPs only";
+      * | Priority := "3 - no inbound connections seen"
+    }
+  | case {
+      JavaStarts=0 | Mitigation := "unknown (JVM started before search range)";
+      FlagStarts=0 | Mitigation := "none";
+      test(FlagStarts==JavaStarts) | Mitigation := "flag set";
+      * | Mitigation := "partial"
+    }
+  // CpuModel becomes a Markdown link to a web search for the model's AVX-512 VBMI support
+  | case {
+      CpuProcessorName=* | CpuQuery := format("%s AVX-512 VBMI", field=[CpuProcessorName]) | CpuQuery := urlEncode(CpuQuery) | CpuModel := format("[%s](https://www.google.com/search?q=%s)", field=[CpuProcessorName, CpuQuery]);
+      * | CpuModel := "unknown"
+    }
+  | rename(field=ComputerName, as=Host)
+  // raise the limit (max 20000) for larger fleets
+  | table([Priority, CpuExposure, Host, CpuModel, ServicePort, InboundConns, PublicPeers, JavaVersion, JavaPath, JavaStarts, Mitigation], sortby=[CpuExposure, Priority, InboundConns], order=[asc, asc, desc], limit=1000)
+
+# Explanation of the query.
+# Using the YAML block scalar `|` allows for multi-line strings.
+# Uses markdown for formatting on the webpage.
+explanation: |
+  **What it looks for:** Java process starts (`ProcessRollup2`) and inbound connections accepted by Java (`NetworkReceiveAcceptIP4`), grouped per host and joined with the CPU model from `SystemCapacity`. The bug needs x86-64 with AVX-512 VBMI, so ARM hosts are dropped and the rest is classified by `CpuProcessorName`. `Priority` ranks hosts by whether Java accepted connections from public IPs, internal IPs or none.
+
+  **Telemetry needed:** Falcon sensor telemetry on Linux and Windows: `ProcessRollup2`, `NetworkReceiveAcceptIP4`, `SystemCapacity`.
+
+  **False positives / tuning:** The regex on `CpuProcessorName` is a heuristic; extend it for your hardware and check rows marked `verify manually`. Java 8 and 11 are excluded only when the version is part of `ImageFileName`. Behind a load balancer `RemoteAddressIP4` is internal, so an empty priority 1 proves nothing. `Mitigation` reads JVM flags from `CommandLine` and misses `JAVA_TOOL_OPTIONS`.
+
+  **Notes:** Search 30 days or more; JVMs started before the range show up only through their network events. The patch level is not checked, confirm it with `java -version` or Spotlight. [Oracle CSPU November 2026](https://www.oracle.com/security-alerts/cspunov2026.html)
