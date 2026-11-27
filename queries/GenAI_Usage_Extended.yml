@@ -1,0 +1,29 @@
+name: GenAI Usage (Extended)
+description: Shows which AI services were seen in endpoint DNS traffic, how many hosts contacted their domains and how often
+  the domains were requested.
+author: Community contribution
+log_sources:
+- Endpoint
+tags:
+- Hunting
+- Monitoring
+cs_required_modules:
+- Insight
+cql: |
+  #event_simpleName=DnsRequest
+  | match(file="generative-ai-domains-extended.csv", field=DomainName, column=domain, mode=glob, ignoreCase=true, include=[service], strict=true)
+  | groupBy([service], function=[
+      count(as=DNSRequests),
+      count(aid, distinct=true, as=AffectedHosts),
+      count(DomainName, distinct=true, as=UniqueDomains),
+      collect(DomainName, limit=15)
+    ], limit=2000)
+  | sort(AffectedHosts, order=desc, limit=2000)
+explanation: |
+  This is a separate version of the original GenAI Usage query. It uses a longer lookup list to cover more AI tools and subdomains without changing the existing query.
+
+  The main result is one row per AI service, with the number of DNS requests, unique hosts and domains seen in the selected time range. A small sample of domains is included to make the result easier to review.
+
+  Upload `generative-ai-domains-extended.csv` as a LogScale lookup before running it. The lookup has `domain` and `service` columns. The query uses the `service` column to group results by provider.
+
+  DNS lookups don't prove someone used a service or uploaded data. Some providers share infrastructure with non-AI services. I haven't verified that the extended lookup catches every result of the original query, so I would keep both.
